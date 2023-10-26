@@ -4,16 +4,16 @@
 
 #ifndef MAGITECH_ECS_H
 #define MAGITECH_ECS_H
-#include <set>
+#include <unordered_set>
 
 struct Entity;
 
 struct Component {
-    std::set<Entity*> entities;
+    std::unordered_set<Entity*> entities;
 };
 
 struct Entity {
-    std::set<Component*> components;
+    std::unordered_set<Component*> components;
 
     void addComponent(Component* c) {
         components.insert(c);
