@@ -15,8 +15,7 @@ Entity::Entity() {
 }
 
 Entity::~Entity() {
-    for (auto [_, f]: to_delete) {
-        std::cout << "deleting " << _.name() << "\n";
+    for (auto &[_, f]: to_delete) {
         f();
     }
 }

@@ -20,9 +20,7 @@ PlayMode::PlayMode(Client &client_) : client(client_) {
         a.add_component<EventHandler>([](const SDL_Event &evt, const glm::uvec2 &window_size) {
             return false;
         });
-        std::cout << "No problems here\n";
     }
-    std::cout << "none here either\n";
 }
 
 PlayMode::~PlayMode() {

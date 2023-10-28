@@ -28,8 +28,9 @@ struct Entity {
     template<typename T, typename... Args>
     T &add_component(Args &&... args) {
         to_delete[std::type_index(typeid(T))] = [this]() {
-            std::cout << "hello";
-            remove_component<T>();
+            // I don't just call remove_component because that invalidates the iterator in ~Entity
+            std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
+            entity_to_component.erase(id);
         };
         
         std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
