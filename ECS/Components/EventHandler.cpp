@@ -1,3 +1,4 @@
+#include <functional>
 #include "EventHandler.hpp"
 
 EventHandler::EventHandler(const std::function<bool(const SDL_Event &, const glm::uvec2 &)> &f)
