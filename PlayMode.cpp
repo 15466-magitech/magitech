@@ -9,6 +9,7 @@
 #include "data_path.hpp"
 #include "ECS/Entity.hpp"
 #include "ECS/Components/EventHandler.hpp"
+#include "spline.h"
 
 
 #include <glm/gtc/type_ptr.hpp>
@@ -59,6 +60,18 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
         });
     }
     std::cout << "Success!" << std::endl;
+    {
+    std::cout << "Testing spline" << std::endl;
+    glm::vec2 start(2.0, 0.0);
+    glm::vec2 end(0.0, 2.0);
+    Spline<glm::vec2> spline;
+    spline.set(0.0, start);
+    spline.set(1.0, end);
+    glm::vec2 query = spline.at(0.5);
+    assert(query.x == 1.0);
+    assert(query.y == 1.0);
+    std::cout << "spline ok" << std::endl;
+    }
     
     //create a player transform:
     scene.transforms.emplace_back();
