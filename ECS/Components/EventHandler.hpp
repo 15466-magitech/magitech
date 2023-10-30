@@ -1,6 +1,6 @@
 /*
  * Created by Nellie Tonev on 10/27/23.
- * Author(s): Nellie Tonev
+ * Author(s): Nellie Tonev, Russell Emerine
  *
  * Component that corresponds to PlayMode::handle_event
  */
@@ -9,16 +9,15 @@
 #include <cstdlib>
 #include <unordered_map>
 
-#include "PlayMode.hpp"
+#include <SDL.h>
+#include <glm/glm.hpp>
+#include "../Component.hpp"
 
-struct EventHandler {
-	EventHandler() = default;
+struct EventHandler : Component<EventHandler> {
+    explicit EventHandler(const std::function<bool(SDL_Event const &, glm::uvec2 const &)> &f);
+    
+    bool handle_event(SDL_Event const &evt, glm::uvec2 const &window_size);
 
-	static std::unordered_map< uint32_t , EventHandler > &get_map() {
-		static std::unordered_map< uint32_t , EventHandler > map;
-		return map;
-	}
-
-	/* when you add this component to an entity, need to replace it with an appropriate handle_event function */
-	std::function< bool(SDL_Event const &, glm::uvec2 const &) > handle_event = nullptr;
+private:
+    const std::function<bool(SDL_Event const &, glm::uvec2 const &)> &handler;
 };
