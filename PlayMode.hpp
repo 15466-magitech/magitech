@@ -1,7 +1,12 @@
 #include "Mode.hpp"
 
+#include "Scene.hpp"
+
 #include "Connection.hpp"
-#include "Game.hpp"
+
+#include "WalkMesh.hpp"
+
+#include "Collision.hpp"
 
 #include <glm/glm.hpp>
 
@@ -9,7 +14,7 @@
 #include <deque>
 
 struct PlayMode : Mode {
-	PlayMode(Client &client);
+	PlayMode();
 	virtual ~PlayMode();
 
 	//functions called by main loop:
@@ -17,18 +22,36 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 
+	Scene scene;
+
+	struct Button {
+		uint8_t downs = 0;
+		uint8_t pressed = 0;
+	} left, right, down, up, jump, use;
+
+
+	struct Player {
+		WalkPoint at;
+		//transform is at player's feet and will be yawed by mouse left/right motion:
+		Scene::Transform *transform = nullptr;
+		//camera is at player's head and will be pitched by mouse up/down motion:
+		Scene::Camera *camera = nullptr;
+		glm::vec3 speed{-0.01f,0.0f,0.0f};
+		bool on_walkmesh = true;
+		float max_speed = 2.0f;
+		glm::vec3 direction = {-1.0f,0.0f,0.0f};
+		Scene::Transform *original_transform = nullptr;
+		uint8_t reset_time = 3;
+		std::string name = "player";
+	} player;
+
+
 	//----- game state -----
+	std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> wireframe_objects;
 
-	//input tracking for local player:
-	Player::Controls controls;
-
-	//latest game state (from server):
-	Game game;
 
 	//last message from server:
 	std::string server_message;
 
-	//connection to server:
-	Client &client;
 
 };

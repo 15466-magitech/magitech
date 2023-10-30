@@ -80,6 +80,13 @@ glm::mat4 Scene::Camera::make_projection() const {
 //-------------------------
 
 
+void Scene::draw(Camera const &camera, bool draw_frame) const {
+	assert(camera.transform);
+	glm::mat4 world_to_clip = camera.make_projection() * glm::mat4(camera.transform->make_world_to_local());
+	glm::mat4x3 world_to_light = glm::mat4x3(1.0f);
+	draw(world_to_clip, world_to_light,draw_frame);
+}
+
 void Scene::draw(Camera const &camera) const {
 	assert(camera.transform);
 	glm::mat4 world_to_clip = camera.make_projection() * glm::mat4(camera.transform->make_world_to_local());
@@ -87,12 +94,15 @@ void Scene::draw(Camera const &camera) const {
 	draw(world_to_clip, world_to_light);
 }
 
-void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light) const {
+void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light, bool draw_frame) const {
 
 	//Iterate through all drawables, sending each one to OpenGL:
 	for (auto const &drawable : drawables) {
+		if (drawable->draw_frame != draw_frame){
+			continue;
+		}
 		//Reference to drawable's pipeline for convenience:
-		Scene::Drawable::Pipeline const &pipeline = drawable.pipeline;
+		Scene::Drawable::Pipeline const &pipeline = drawable->pipeline;
 
 		//skip any drawables without a shader program set:
 		if (pipeline.program == 0) continue;
@@ -111,8 +121,12 @@ void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_lig
 		//Configure program uniforms:
 
 		//the object-to-world matrix is used in all three of these uniforms:
-		assert(drawable.transform); //drawables *must* have a transform
-		glm::mat4x3 object_to_world = drawable.transform->make_local_to_world();
+		assert(drawable->transform); //drawables *must* have a transform
+		glm::mat4x3 object_to_world = drawable->transform->make_local_to_world();
+
+		if(pipeline.draw_frame != -1U){
+			glUniform1i(pipeline.draw_frame,draw_frame);
+		}
 
 		//OBJECT_TO_CLIP takes vertices from object space to clip space:
 		if (pipeline.OBJECT_TO_CLIP_mat4 != -1U) {
@@ -360,7 +374,7 @@ void Scene::set(Scene const &other, std::unordered_map< Transform const *, Trans
 	//copy other's drawables, updating transform pointers:
 	drawables = other.drawables;
 	for (auto &d : drawables) {
-		d.transform = transform_to_transform.at(d.transform);
+		d->transform = transform_to_transform.at(d->transform);
 	}
 
 	//copy other's cameras, updating transform pointers:
@@ -374,4 +388,192 @@ void Scene::set(Scene const &other, std::unordered_map< Transform const *, Trans
 	for (auto &l : lights) {
 		l.transform = transform_to_transform.at(l.transform);
 	}
+}
+
+
+
+
+
+// Collision code
+bool Scene::Collider::intersect(Scene::Collider c){
+    if (
+        min.x <= c.max.x &&
+        max.x >= c.min.x &&
+        min.y <= c.max.y &&
+        max.y >= c.min.y &&
+        min.z <= c.max.z &&
+        max.z >= c.min.z
+     )
+        return true;
+     else
+        return false;
+
+}
+
+
+// Collision code
+bool Scene::Collider::intersect(std::shared_ptr<Scene::Collider> c){
+    if (
+        min.x <= c->max.x &&
+        max.x >= c->min.x &&
+        min.y <= c->max.y &&
+        max.y >= c->min.y &&
+        min.z <= c->max.z &&
+        max.z >= c->min.z
+     )
+        return true;
+     else
+        return false;
+
+}
+
+
+bool Scene::Collider::point_intersect(glm::vec3 p){
+    if (
+        p.x > min.x &&
+        p.x < max.x &&
+        p.y > min.y &&
+        p.y < max.y &&
+        p.z > min.z &&
+        p.z < max.z
+    )
+        return true;
+    else
+        return false;
+}
+
+
+std::vector<glm::vec3> Scene::Collider::get_vertices(){
+    std::vector<float> xs {min_original.x, max_original.x};
+    std::vector<float> ys {min_original.y, max_original.y};
+    std::vector<float> zs {min_original.z, max_original.z};
+
+    std::vector<glm::vec3> ret;
+
+    for (uint8_t i = 0; i < xs.size(); i++){
+        for (uint8_t j = 0; j < ys.size(); j++){
+            for (uint8_t k = 0; k < zs.size(); k++){
+                glm::vec3 tmp = glm::vec3(xs[i],ys[j],zs[k]);
+				ret.push_back(tmp);
+            }
+        }
+    }
+
+    return ret;
+}
+
+
+void Scene::Collider::update_BBox(Scene::Transform * t){
+
+    std::vector<glm::vec3> current_vertices = get_vertices();
+    //std::vector<glm::vec3> new_vertices;
+
+    std::vector<float> xs;
+    std::vector<float> ys;
+    std::vector<float> zs;
+
+    auto trans = t->make_local_to_world();
+
+    for (auto v : current_vertices){
+        auto newVertex = trans * glm::vec4{v,1};
+        xs.push_back(newVertex.x);
+        ys.push_back(newVertex.y);
+        zs.push_back(newVertex.z);
+    }
+
+    // Make it axis-aligned again
+    float minX = std::numeric_limits<float>::max();
+    float minY = minX;
+    float minZ = minX;
+
+    float maxX = -std::numeric_limits<float>::max();
+    float maxY = maxX;
+    float maxZ = maxX;
+
+    assert(xs.size() == ys.size() && ys.size() == zs.size());
+    for (uint8_t i = 0; i < xs.size(); i++){
+        if (xs[i] < minX){
+            minX = xs[i];
+        }
+        if (xs[i] > maxX){
+            maxX = xs[i];
+        }
+        if (ys[i] < minY){
+            minY = ys[i];
+        }
+        if (ys[i] > maxY){
+            maxY = ys[i];
+        }
+        if (zs[i] < minZ){
+            minZ = zs[i];
+        }
+        if (zs[i] > maxZ){
+            maxZ = zs[i];
+        }
+    }
+
+    min.x = minX; min.y = minY; min.z = minZ;
+    max.x = maxX; max.y = maxY; max.z = maxZ;
+
+
+}
+
+// https://stackoverflow.com/questions/65107289/minimum-distance-between-two-axis-aligned-boxes-in-n-dimensions
+float Scene::Collider::min_distance(std::shared_ptr<Scene::Collider> c){
+	auto delta1 = min - c->max;
+	auto delta2 = c->min - max;
+
+	glm::vec3 u,v;
+
+	u.x = std::max(delta1.x,0.0f);
+	u.y = std::max(delta1.y,0.0f);
+	u.z = std::max(delta1.z,0.0f);
+	v.x = std::max(delta2.x,0.0f);
+	v.y = std::max(delta2.y,0.0f);
+	v.z = std::max(delta2.z,0.0f);
+
+	float distance = std::sqrt(u.x * u.x + u.y * u.y + u.z * u.z + v.x * v.x + v.y * v.y + v.z * v.z);
+
+	return distance;
+}
+
+// Find the overlapped distance of three axis
+//https://stackoverflow.com/questions/16691524/calculating-the-overlap-distance-of-two-1d-line-segments
+std::pair<int, float> Scene::Collider::least_collison_axis(std::shared_ptr<Scene::Collider> c){
+
+	auto overlap = [](float min1,float max1, float min2, float max2)->float{
+		return std::max(0.0f,std::min(max1,max2) - std::max(min1,min2));
+	};
+
+
+	float min_overlap = std::numeric_limits<float>::infinity();
+	int idx = -1;
+
+
+	for(auto i = 0; i < 3; i++){
+		float min1 = min[i];
+		float max1 = max[i];
+		float min2 = c->min[i];
+		float max2 = c->max[i];
+
+		auto tmp = overlap(min1,max1,min2,max2);
+
+		// Should not have these situations
+		assert(tmp >= 0.0);
+		
+		if (tmp < min_overlap){
+			if(max1 < max2){
+				tmp = -tmp;
+			}
+			min_overlap = tmp;
+			idx = i;
+		}
+	}
+
+
+	assert(!(min[idx] > c->min[idx] && max[idx] < c->max[idx]));
+	assert(!(min[idx] < c->min[idx] && max[idx] > c->max[idx]));
+
+
+	return std::make_pair(idx,min_overlap);
 }

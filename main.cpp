@@ -1,14 +1,25 @@
+//Mode.hpp declares the "Mode::current" static member variable, which is used to decide where event-handling, updating, and drawing events go:
+#include "Mode.hpp"
+
+//The 'PlayMode' mode plays the game:
 #include "PlayMode.hpp"
 
-#include "Connection.hpp"
-#include "Mode.hpp"
+//For asset loading:
 #include "Load.hpp"
+
+//For sound init:
 #include "Sound.hpp"
+
+//GL.hpp will include a non-namespace-polluting set of opengl prototypes:
 #include "GL.hpp"
+
+//for screenshots:
 #include "load_save_png.hpp"
 
+//Includes for libSDL:
 #include <SDL.h>
 
+//...and for c++ standard library functions:
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
@@ -33,14 +44,6 @@ int main(int argc, char **argv) {
 	//when compiled on windows, unhandled exceptions don't have their message printed, which can make debugging simple issues difficult.
 	try {
 #endif
-	//------------ command line arguments ------------
-	if (argc != 3) {
-		std::cerr << "Usage:\n\t./client <host> <port>" << std::endl;
-		return 1;
-	}
-
-	//------------ connect to server --------------
-	Client client(argv[1], argv[2]);
 
 	//------------  initialization ------------
 
@@ -63,7 +66,7 @@ int main(int argc, char **argv) {
 
 	//create window:
 	SDL_Window *window = SDL_CreateWindow(
-		"gp23 game6: multiplayer", //TODO: remember to set a title for your game!
+		"gp23 game5: Driving on Ice Simulator", //TODO: remember to set a title for your game!
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		1280, 720, //TODO: modify window size if you'd like
 		SDL_WINDOW_OPENGL
@@ -109,7 +112,7 @@ int main(int argc, char **argv) {
 	call_load_functions();
 
 	//------------ create game mode + make current --------------
-	Mode::set_current(std::make_shared< PlayMode >(client));
+	Mode::set_current(std::make_shared< PlayMode >());
 
 	//------------ main loop ------------
 
