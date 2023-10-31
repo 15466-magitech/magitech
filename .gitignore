@@ -24,3 +24,4 @@ scenes/show-scene*
 CMakeLists.txt
 cmake-build-debug/
 .idea/
+.vscode/
