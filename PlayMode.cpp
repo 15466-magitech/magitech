@@ -118,7 +118,7 @@ PlayMode::PlayMode()
     
     //start player walking at nearest walk point:
     player.at = walkmesh->nearest_walk_point(player.transform->position);
-
+    
     //scene.transforms.emplace_back();
     //auto transform = &scene.transforms.back();
     //transform->scale *= 2.0f;
@@ -133,7 +133,21 @@ PlayMode::~PlayMode() = default;
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
     if (evt.type == SDL_KEYDOWN) {
-        if (terminal.handle_key(evt.key.keysym.sym)) {
+        Command command = terminal.handle_key(evt.key.keysym.sym);
+        if (command != Command::False) {
+            switch (command) {
+                case Command::False:
+                    assert(false && "impossible");
+                    break;
+                case Command::True:
+                    break;
+                case Command::OpenSesame:
+                    std::cout << "command was open sesame!\n";
+                    break;
+                case Command::Mirage:
+                    std::cout << "command was open mirage!\n";
+                    break;
+            }
             return true;
         } else if (evt.key.keysym.sym == SDLK_ESCAPE) {
             SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -350,33 +364,12 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
     
-    glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
-	scene.draw(*player.camera, false);
-	glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-	scene.draw(*player.camera, true);
-	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
-
-
-
-     {
-        DrawLines draw_lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
-        //draw bounding box:
-        for(auto collider : scene.colliders){
-            auto current_mesh_max = collider->max;
-            auto current_mesh_min = collider->min;
-
-            glm::vec3 r = 0.5f * (current_mesh_max - current_mesh_min);
-            glm::vec3 c = 0.5f * (current_mesh_max + current_mesh_min);
-            glm::mat4x3 mat(
-                glm::vec3(r.x,  0.0f, 0.0f),
-                glm::vec3(0.0f,  r.y, 0.0f),
-                glm::vec3(0.0f, 0.0f,  r.z),
-                c
-            );
-            draw_lines.draw_box(mat, glm::u8vec4(0xdd, 0xdd, 0xdd, 0xff));
-        }
-		
-    }
+    
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    scene.draw(*player.camera, false);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    scene.draw(*player.camera, true);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     
     terminal.draw();
     
@@ -391,7 +384,7 @@ void PlayMode::update_wireframe(){
     std::shared_ptr<Scene::Collider> collider_to_wireframe = nullptr; // draw wireframe
 
     // Test the frame thing?
-    if (use.downs > 0 && !use.pressed){
+    if (use.downs > 0 && !use.pressed) {
         use.downs = 0;
         auto c = scene.collider_name_map[player.name];
 

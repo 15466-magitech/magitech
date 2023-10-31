@@ -6,6 +6,18 @@
 #include "MonospaceFont.hpp"
 
 /*
+ * The possible commands that can be entered into the terminal
+ */
+enum struct Command {
+    False = 0, // only falsey value, means handle_key did not process the input
+    True, // means handle_key did process the input but there's nothing else interesting to report
+    OpenSesame,
+    Mirage
+};
+
+// TODO: in the future, maybe make "reacts to a terminal command" be a component and have the Terminal call a related system
+
+/*
  * An on-screen Terminal
  */
 struct Terminal : Entity {
@@ -32,7 +44,7 @@ struct Terminal : Entity {
     /*
      * Handle a key event
      */
-    bool handle_key(SDL_Keycode key);
+    Command handle_key(SDL_Keycode key);
     
     /*
      * Draw the Terminal. This should come last, after other drawing.
