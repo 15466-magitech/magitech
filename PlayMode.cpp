@@ -108,16 +108,6 @@ PlayMode::PlayMode() : scene(*mesh_scene) {
 		}
 	}
 
-    // for(auto &d : scene.drawables){
-	// 	if(d->transform->name == "car"){
-	// 		d->draw_frame = true;
-	// 	}
-	// }
-
-
-    //Debug camera
-    //player.camera = &scene.cameras.back();
-
 
 	//create a player camera attached to a child of the player transform:
 	scene.transforms.emplace_back();
@@ -239,35 +229,6 @@ void PlayMode::update(float elapsed) {
     glm::vec3 right_vec = glm::cross(dir,normal);
 
     glm::vec3 remain = move.x * right_vec + move.y * dir; 
-    // {
-    //     //rotate the player
-    //     auto normal = walkmesh->to_world_triangle_normal(player.at);
-    //     glm::vec3 dir = player.direction;
-    //     if(left.pressed && !right.pressed){
-    //         auto rotation = glm::angleAxis(glm::radians(80.0f * elapsed),normal);
-    //         dir = rotation * glm::vec4(dir,0.0);
-    //         player.direction = dir;
-    //         player.transform->rotation *= rotation;
-    //     }
-
-    //     if(!left.pressed && right.pressed){
-    //         auto rotation = glm::angleAxis(glm::radians(-80.0f * elapsed),normal);
-    //         dir = rotation * glm::vec4(dir,0.0);
-    //         player.direction = dir;
-    //         player.transform->rotation *= rotation;
-    //     }
-    // }
-
-
-
-    //get move in world coordinate system:
-    //glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
-    // glm::vec3 remain = glm::vec3(0.0f);
-    // if (move != 0.0f){
-    //     remain = glm::normalize(player.direction) * move;
-    //     //printf("direction:[%.3f,%.3f,%.3f]\n",player.direction.x,player.direction.y,player.direction.z);
-    //     //printf("remain:[%.3f,%.3f,%.3f]\n",remain.x,remain.y,remain.z);
-    // }
 
 
     update_wireframe();
@@ -310,32 +271,6 @@ void PlayMode::update(float elapsed) {
 
     // update player direction?
     {
-        // https://gamedev.stackexchange.com/questions/188984/rotating-an-object-to-face-the-same-direction-as-another-object
-        // if (glm::length2(remain) != 0.0f){
-        //     glm::vec3 normal = walkmesh->to_world_smooth_normal(player.at);
-        //     glm::vec3 vertical_n = glm::dot(normal,remain) * normal;
-        //     glm::vec3 horizontal_n = remain - vertical_n;
-
-        //     horizontal_n = glm::normalize(horizontal_n);
-        //     glm::vec3 dir = glm::normalize(player.direction);
-
-        //     glm::vec3 cross_product = glm::cross(horizontal_n, dir);
-
-        //     float sine = glm::length(cross_product);
-        //     float angle = glm::asin(sine);
-
-        //     glm::vec3 axis = cross_product / sine;
-        //     glm::vec3 imaginary = glm::sin(angle/2.0f) * axis;
-
-        //     glm::quat quartenion;
-        //     quartenion.w = glm::cos(angle/2.0f);
-        //     quartenion.x = imaginary.x;
-        //     quartenion.y = imaginary.y;
-        //     quartenion.z = imaginary.z;
-
-        //     player.transform->rotation *= quartenion;
-        // }
-
         //https://iquilezles.org/articles/noacos/
         [[maybe_unused]] auto rotation_align = [](glm::vec3 &d, glm::vec3 &z)->glm::mat3x3{
             const glm::vec3  v = cross( z, d );
@@ -347,25 +282,6 @@ void PlayMode::update(float elapsed) {
                         v.x*v.z*k - v.y,   v.y*v.z*k + v.x,    v.z*v.z*k + c    );
         };
        
-        // if ( glm::length2(remain)!=0.0f){
-        //     glm::vec3 normal = walkmesh->to_world_smooth_normal(player.at);
-        //     glm::vec3 vertical_n = glm::dot(normal,remain) * normal;
-        //     glm::vec3 horizontal_n = remain - vertical_n;
-
-        //     horizontal_n = glm::normalize(horizontal_n);
-        //     glm::vec3 dir = glm::normalize(player.direction);
-
-        //     glm::vec3 cross_product = glm::cross(horizontal_n, dir);
-
-        //     float sine = glm::length(cross_product);
-        //     float angle = glm::asin(sine);
-
-
-        //     auto rotation = glm::angleAxis(angle,normal);
-        //     player.transform->rotation *= rotation;
-        //     player.direction = rotation * player.direction;
-        //     printf("updated direction:[%.3f,%.3f,%.3f]\n",player.direction.x,player.direction.y,player.direction.z);
-        // }
     }
 
 
