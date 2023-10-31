@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <typeindex>
 #include <iostream>
+#include <functional>
 
 struct Entity {
     Entity();
