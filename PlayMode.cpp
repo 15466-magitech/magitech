@@ -19,6 +19,7 @@
 
 GLuint phonebank_meshes_for_lit_color_texture_program = 0;
 GLuint wizard_meshes_for_lit_color_texture_program = 0;
+GLuint textcube_meshes_for_lit_color_texture_program = 0;
 Load<MeshBuffer> phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("phone-bank.pnct"));
     phonebank_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
@@ -28,6 +29,12 @@ Load<MeshBuffer> phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("wizard.pnct"));
     wizard_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    return ret;
+});
+
+Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+    MeshBuffer const *ret = new MeshBuffer(data_path("textcube.pnct"));
+    textcube_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     return ret;
 });
 
@@ -109,7 +116,7 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
     //transform->scale *= 2.0f;
     Mesh const &mesh = wizard_meshes->lookup("wizard");
     scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
-    std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
+    std::shared_ptr<Scene::Drawable> drawable = scene.drawables.back();
 
     drawable->pipeline = lit_color_texture_program_pipeline;
 
@@ -117,6 +124,20 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
     drawable->pipeline.type = mesh.type;
     drawable->pipeline.start = mesh.start;
     drawable->pipeline.count = mesh.count;
+
+    scene.transforms.emplace_back();
+    transform = &scene.transforms.back();
+    transform->position = glm::vec3(2.0, 2.0, 2.0);
+    scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+    drawable = scene.drawables.back();
+
+    drawable->pipeline = lit_color_texture_program_pipeline;
+
+    Mesh const &textFace = textcube_meshes->lookup("TextFace");
+    drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
+    drawable->pipeline.type = textFace.type;
+    drawable->pipeline.start = textFace.start;
+    drawable->pipeline.count = textFace.count;
 }
 
 PlayMode::~PlayMode() = default;
