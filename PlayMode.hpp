@@ -3,6 +3,7 @@
 #include "Scene.hpp"
 #include "WalkMesh.hpp"
 #include "Terminal.hpp"
+#include "spline.h"
 
 #include <glm/glm.hpp>
 
@@ -29,7 +30,10 @@ struct PlayMode : Mode {
     struct Button {
         uint8_t downs = 0;
         uint8_t pressed = 0;
-    } left, right, down, up , use;
+    } left, right, down, up, read, use;
+    // camera animation
+    bool animated = false;
+    Spline<glm::vec3> splineposition, splinerotation;
     
     //local copy of the game scene (so code can change it during gameplay):
     Scene scene;

@@ -32,9 +32,11 @@ Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     return ret;
 });
 
+Mesh const *textFace;
 Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("textcube.pnct"));
     textcube_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    textFace = &ret->lookup("TextFace");
     return ret;
 });
 
@@ -134,12 +136,10 @@ PlayMode::PlayMode()
     drawable = scene.drawables.back();
     
     drawable->pipeline = lit_color_texture_program_pipeline;
-    
-    Mesh const &textFace = textcube_meshes->lookup("TextFace");
     drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
-    drawable->pipeline.type = textFace.type;
-    drawable->pipeline.start = textFace.start;
-    drawable->pipeline.count = textFace.count;
+    drawable->pipeline.type = textFace->type;
+    drawable->pipeline.start = textFace->start;
+    drawable->pipeline.count = textFace->count;
 }
 
 PlayMode::~PlayMode() = default;
@@ -183,6 +183,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             return true;
         } else if (evt.key.keysym.sym == SDLK_e) {
             terminal.activate();
+        } else if (evt.key.keysym.sym == SDLK_r) {
+            read.downs += 1;
+            read.pressed = true;
+            return true;
         }
     } else if (evt.type == SDL_KEYUP) {
         if (evt.key.keysym.sym == SDLK_a) {
@@ -196,6 +200,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             return true;
         } else if (evt.key.keysym.sym == SDLK_s) {
             down.pressed = false;
+            return true;
+        } else if (evt.key.keysym.sym == SDLK_r) {
+            read.pressed = false;
             return true;
         }
     } else if (evt.type == SDL_MOUSEBUTTONDOWN) {
@@ -228,6 +235,14 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
+    if (!animated && read.pressed) {
+      animated = true;
+      splineposition = Spline<glm::vec3>();
+      splinerotation = Spline<glm::vec3>();
+      splineposition.set(0.0f, player.camera->transform->position);
+      splineposition.set(1.0f, player.camera->transform->position);
+  
+    }
     //player walking:
     {
         //combine inputs into a move:
