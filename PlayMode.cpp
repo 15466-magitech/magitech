@@ -18,9 +18,16 @@
 #include <random>
 
 GLuint phonebank_meshes_for_lit_color_texture_program = 0;
+GLuint wizard_meshes_for_lit_color_texture_program = 0;
 Load<MeshBuffer> phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("phone-bank.pnct"));
     phonebank_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    return ret;
+});
+
+Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+    MeshBuffer const *ret = new MeshBuffer(data_path("wizard.pnct"));
+    wizard_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     return ret;
 });
 
@@ -85,14 +92,31 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
     player.camera->near = 0.01f;
     player.camera->transform->parent = player.transform;
     
-    //player's eyes are 1.8 units above the ground:
-    player.camera->transform->position = glm::vec3(0.0f, 0.0f, 1.8f);
+    //default view point behind player
+    player.camera->transform->position = glm::vec3(-2.5f, -5.0f, 2.5f);
     
-    //rotate camera facing direction (-z) to player facing direction (+y):
-    player.camera->transform->rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    //rotate camera to something pointing in way of player
+    // arcsin 0.1 ~ 6 degrees
+    player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+    //glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     
     //start player walking at nearest walk point:
     player.at = walkmesh->nearest_walk_point(player.transform->position);
+
+    //scene.transforms.emplace_back();
+    //auto transform = &scene.transforms.back();
+    Scene::Transform *transform = player.transform;
+    //transform->scale *= 2.0f;
+    Mesh const &mesh = wizard_meshes->lookup("wizard");
+    scene.drawables.emplace_back(transform);
+    Scene::Drawable &drawable = scene.drawables.back();
+
+    drawable.pipeline = lit_color_texture_program_pipeline;
+
+    drawable.pipeline.vao = wizard_meshes_for_lit_color_texture_program;
+    drawable.pipeline.type = mesh.type;
+    drawable.pipeline.start = mesh.start;
+    drawable.pipeline.count = mesh.count;
 }
 
 PlayMode::~PlayMode() = default;
