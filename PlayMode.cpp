@@ -18,12 +18,7 @@
 #include <random>
 
 GLuint artworld_meshes_for_lit_color_texture_program = 0;
-//GLuint wizard_meshes_for_lit_color_texture_program = 0;
-// Load<MeshBuffer> phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-//     MeshBuffer const *ret = new MeshBuffer(data_path("phone-bank.pnct"));
-//     phonebank_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
-//     return ret;
-// });
+GLuint textcube_meshes_for_lit_color_texture_program = 0;
 
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("artworld_delete.pnct"));
@@ -31,11 +26,11 @@ Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     return ret;
 });
 
-// Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-//     MeshBuffer const *ret = new MeshBuffer(data_path("wizard.pnct"));
-//     wizard_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
-//     return ret;
-// });
+Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+    MeshBuffer const *ret = new MeshBuffer(data_path("textcube.pnct"));
+    textcube_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    return ret;
+});
 
 Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
     return new Scene(
