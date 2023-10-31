@@ -1,5 +1,4 @@
 objs/
-.DS_Store
 maek-cache.json
 dist/README-SDL.txt
 dist/README-glm.txt
