@@ -2,6 +2,7 @@
 
 #include "Scene.hpp"
 #include "WalkMesh.hpp"
+#include "Terminal.hpp"
 #include "Load.hpp"
 #include "Mesh.hpp"
 
@@ -23,6 +24,8 @@ struct PlayMode : Mode {
     void draw(glm::uvec2 const &drawable_size) override;
     
     //----- game state -----
+    
+    Terminal terminal;
     
     //input tracking:
     struct Button {
