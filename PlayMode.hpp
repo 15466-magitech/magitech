@@ -62,6 +62,10 @@ struct PlayMode : Mode {
     void initialize_wireframe_objects(std::string prefix);
 
 
+    // Unlock logics(for open sesame)
+    void unlock(std::string prefix);
+
+
 
     //initilization functions
     void initialize_scene_metadata();

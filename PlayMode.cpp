@@ -21,7 +21,7 @@ GLuint artworld_meshes_for_lit_color_texture_program = 0;
 GLuint textcube_meshes_for_lit_color_texture_program = 0;
 
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-    MeshBuffer const *ret = new MeshBuffer(data_path("artworld_delete.pnct"));
+    MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     return ret;
 });
@@ -34,7 +34,7 @@ Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 
 Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
     return new Scene(
-            data_path("artworld_delete.scene"),
+            data_path("artworld.scene"),
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 Mesh const &mesh = artworld_meshes->lookup(mesh_name);
                 
@@ -81,7 +81,7 @@ WalkMesh const *walkmesh = nullptr;
 
 
 Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
-    auto *ret = new WalkMeshes(data_path("artworld_delete.w"));
+    auto *ret = new WalkMeshes(data_path("artworld.w"));
     walkmesh = &ret->lookup("WalkMesh");
     return ret;
 });
@@ -142,9 +142,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                 case Command::True:
                     break;
                 case Command::OpenSesame:
+                    unlock("unlock_");
                     std::cout << "command was open sesame!\n";
                     break;
                 case Command::Mirage:
+                    update_wireframe();
                     std::cout << "command was open mirage!\n";
                     break;
             }
@@ -233,8 +235,6 @@ void PlayMode::update(float elapsed) {
         
         //get move in world coordinate system:
         glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
-
-        update_wireframe();
 
         //Collision
         {
@@ -384,90 +384,85 @@ void PlayMode::update_wireframe(){
     std::shared_ptr<Scene::Collider> collider_to_wireframe = nullptr; // draw wireframe
 
     // Test the frame thing?
-    if (use.downs > 0 && !use.pressed) {
-        use.downs = 0;
-        auto c = scene.collider_name_map[player.name];
 
-        if(has_paint_ability){
-            // remove real object, only draw wireframe
-            for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
-                auto collider = *it;
-                if(collider->name == player.name){
-                    continue;
-                }
-                auto dist = c->min_distance(collider);
-                if (dist < 0.5){
-                    std::string name = collider->name;
-                    // If this is already a wireframe
-                    if (!current_wireframe_objects_map.count(name)){
-                        collider_to_wireframe = collider;
-                        name_to_wireframe = name;
-                        use.downs = 0;
-                        break;
-                    
-                    }   
-                }
+    auto c = scene.collider_name_map[player.name];
+
+    if(has_paint_ability){
+        // remove real object, only draw wireframe
+        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
+            auto collider = *it;
+            if(collider->name == player.name){
+                continue;
             }
-            // turn wireframe object real
-            if (collider_to_wireframe == nullptr){
-                // Add it back
-                for(auto &it : current_wireframe_objects_map){
-                    std::string name = it.first;
-                    auto collider = it.second;
-                    auto dist = c->min_distance(collider);
-                    if (dist < 0.5 && !c->intersect(collider)){
-                        collider_to_real = collider;
-                        name_to_real = name;
-                        use.downs = 0;
-                        break;
-                    }
-                }
-
-            }
-        }else{ // Paintbrush case // This is ugly code but it works..
-            for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
-                auto collider = *it;
-                if(collider->name == player.name || collider->name.find("Paintbrush") == std::string::npos){
-                    continue;
-                } 
-                auto dist = c->min_distance(collider);
-                if (dist < 0.5){
-                    std::string name = collider->name;
-                    // If this is already a wireframe
-                    if (!current_wireframe_objects_map.count(name)){
-                        collider_to_wireframe = collider;
-                        name_to_wireframe = name;
-                        use.downs = 0;
-                        has_paint_ability = true;
-                        break;
-                    
-                    }   
-                }
-            }
-            if (collider_to_wireframe == nullptr){
-                // Add it back
-                for(auto &it : current_wireframe_objects_map){
-                    std::string name = it.first;
-                    if(name.find("Paintbrush") == std::string::npos){
-                        continue;
-                    } 
-
-                    auto collider = it.second;
-                    auto dist = c->min_distance(collider);
-                    if (dist < 0.5 && !c->intersect(collider)){
-                        collider_to_real = collider;
-                        name_to_real = name;
-                        use.downs = 0;
-                        has_paint_ability = true;
-                        break;
-                    }
-                }
-
+            auto dist = c->min_distance(collider);
+            if (dist < 0.5){
+                std::string name = collider->name;
+                // If this is already a wireframe
+                if (!current_wireframe_objects_map.count(name)){
+                    collider_to_wireframe = collider;
+                    name_to_wireframe = name;
+                    break;
+                
+                }   
             }
         }
+        // turn wireframe object real
+        if (collider_to_wireframe == nullptr){
+            // Add it back
+            for(auto &it : current_wireframe_objects_map){
+                std::string name = it.first;
+                auto collider = it.second;
+                auto dist = c->min_distance(collider);
+                if (dist < 0.5 && !c->intersect(collider)){
+                    collider_to_real = collider;
+                    name_to_real = name;
+                    break;
+                }
+            }
+
+        }
+    }else{ // Paintbrush case // This is ugly code but it works..
+        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
+            auto collider = *it;
+            if(collider->name == player.name || collider->name.find("Paintbrush") == std::string::npos){
+                continue;
+            } 
+            auto dist = c->min_distance(collider);
+            if (dist < 0.5){
+                std::string name = collider->name;
+                // If this is already a wireframe
+                if (!current_wireframe_objects_map.count(name)){
+                    collider_to_wireframe = collider;
+                    name_to_wireframe = name;
+                    has_paint_ability = true;
+                    break;
+                
+                }   
+            }
+        }
+        if (collider_to_wireframe == nullptr){
+            // Add it back
+            for(auto &it : current_wireframe_objects_map){
+                std::string name = it.first;
+                if(name.find("Paintbrush") == std::string::npos){
+                    continue;
+                } 
+
+                auto collider = it.second;
+                auto dist = c->min_distance(collider);
+                if (dist < 0.5 && !c->intersect(collider)){
+                    collider_to_real = collider;
+                    name_to_real = name;
+                    has_paint_ability = true;
+                    break;
+                }
+            }
+
+        }
+    }
         
 
-    }
+    
 
     if(collider_to_real){
         // Add back bounding box
@@ -599,4 +594,35 @@ void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes){
             scene.collider_name_map[name] = collider;
         } 
     }
+}
+
+
+
+
+// Item to unlock must be a collider
+void PlayMode::unlock(std::string prefix){
+
+    auto c = scene.collider_name_map[player.name];
+
+    std::shared_ptr<Scene::Collider> collider_to_remove = nullptr;
+    std::string name_to_remove;
+
+    for(auto collider : scene.colliders){
+        if(collider->name.find(prefix)!=std::string::npos){
+            auto dist = c->min_distance(collider);
+            if(dist < 2.0){
+                collider_to_remove = collider;
+                name_to_remove = collider->name;
+                break;
+            }
+        }else{
+            continue;
+        }
+    }
+    // Remove it from drawables and collider datastructure
+    auto d = scene.drawble_name_map[name_to_remove];
+    scene.drawables.remove(d);
+    scene.drawble_name_map.erase(name_to_remove);
+    scene.colliders.remove(collider_to_remove);
+    scene.collider_name_map.erase(name_to_remove);
 }
