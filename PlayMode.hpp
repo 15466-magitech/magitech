@@ -46,6 +46,7 @@ struct PlayMode : Mode {
 
         //other metadata
         std::string name = "Player";
+        std::string name = "Player";
     } player;
 
     // Wireframe logics
