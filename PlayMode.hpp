@@ -40,11 +40,18 @@ struct PlayMode : Mode {
         Scene::Camera *camera = nullptr;
 
         //other metadata
-        std::string name;
+        std::string name = "Player";
     } player;
 
     // Wireframe logics
 	std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
 	std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> current_wireframe_objects_map;
 	void update_wireframe();
+    void initialize_wireframe_objects(std::string prefix);
+
+
+
+    //initilization functions
+    void initialize_scene_metadata();
+    void initialize_collider(std::string prefix_pattern, Load<MeshBuffer>);
 };

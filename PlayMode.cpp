@@ -46,7 +46,8 @@ Load<Scene> phonebank_scene(LoadTagDefault, []() -> Scene const * {
                 drawable->pipeline.type = mesh.type;
                 drawable->pipeline.start = mesh.start;
                 drawable->pipeline.count = mesh.count;
-                
+                drawable->wireframe_info.draw_frame = false;
+                drawable->wireframe_info.one_time_change = true;
             });
 });
 
@@ -117,6 +118,12 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
     drawable->pipeline.type = mesh.type;
     drawable->pipeline.start = mesh.start;
     drawable->pipeline.count = mesh.count;
+    drawable->wireframe_info.draw_frame = false;
+    drawable->wireframe_info.one_time_change = false;
+
+    initialize_scene_metadata();
+    initialize_collider("col_", phonebank_meshes);
+    initialize_wireframe_objects("wf_");
 }
 
 PlayMode::~PlayMode() = default;
@@ -413,5 +420,58 @@ void PlayMode::update_wireframe(){
             wireframe_objects.remove(collider_to_add);
         }
         d->wireframe_info.draw_frame = true;
+    }
+}
+
+
+// prefix_on(off)_(onetime)_xxxxx
+// on means draw full color at first
+// check if there is a prefix_on(off)_(onetime)_xxxxx_invisible
+void PlayMode::initialize_wireframe_objects(std::string prefix){
+    for(auto &c : scene.colliders){
+        if(c->name.find(prefix)!=std::string::npos){
+            wireframe_objects.push_back(c);
+            // Only one time?
+            auto d = scene.drawble_name_map[c->name];
+            if(c->name.find("onetime")){
+                d->wireframe_info.one_time_change = true;
+            }else{
+                d->wireframe_info.one_time_change = false;
+            }
+            if(c->name.find("on")){
+                d->wireframe_info.draw_frame = false;
+            }else{
+                d->wireframe_info.draw_frame = true;
+                current_wireframe_objects_map[c->name] = c;
+            }
+        }
+    }
+}
+
+// Should be called after all drawables are loaded into the list
+void PlayMode::initialize_scene_metadata(){
+    for(auto d : scene.drawables){
+        std::string name = d->transform->name;
+        scene.drawble_name_map[name] = d;
+    }
+}
+
+
+
+// Which mesh to lookup?
+// prefix_xxxxx
+void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes){
+	for(auto &it : meshes->meshes){
+        std::string name = it.first;
+        auto mesh = it.second;
+        if(name.find(prefix)!=std::string::npos){
+            glm::vec3 min = mesh.min;
+            glm::vec3 max = mesh.max;
+            auto collider = std::make_shared<Scene::Collider>(name,min,max,min,max);
+            auto d = scene.drawble_name_map[name];
+            collider->update_BBox(d->transform);
+            scene.colliders.push_back(collider);
+            scene.collider_name_map[name] = collider;
+        }
     }
 }
