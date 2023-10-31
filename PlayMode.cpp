@@ -223,7 +223,7 @@ void PlayMode::update(float elapsed) {
     //player walking:
     {
         //combine inputs into a move:
-        constexpr float PlayerSpeed = 3.0f;
+        constexpr float PlayerSpeed = 5.0f;
         auto move = glm::vec2(0.0f);
         if (left.pressed && !right.pressed) move.x = -1.0f;
         if (!left.pressed && right.pressed) move.x = 1.0f;
@@ -320,7 +320,8 @@ void PlayMode::update(float elapsed) {
             
             glm::quat adjust = glm::rotation(
                     player.transform->rotation * glm::vec3(0.0f, 0.0f, 1.0f), //current up vector
-                    walkmesh->to_world_smooth_normal(player.at) //smoothed up vector at walk location
+                    //walkmesh->to_world_smooth_normal(player.at) //smoothed up vector at walk location
+                    glm::vec3(0.0,0.0,1.0)
             );
             player.transform->rotation = glm::normalize(adjust * player.transform->rotation);
         }
