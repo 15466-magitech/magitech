@@ -2,6 +2,8 @@
 
 #include "Scene.hpp"
 #include "WalkMesh.hpp"
+#include "Load.hpp"
+#include "Mesh.hpp"
 #include "Terminal.hpp"
 #include "spline.h"
 
@@ -30,7 +32,7 @@ struct PlayMode : Mode {
     struct Button {
         uint8_t downs = 0;
         uint8_t pressed = 0;
-    } left, right, down, up, read, use;
+    } left, right, down, up, read;
     // camera animation
     bool animated = false;
     Spline<glm::vec3> splineposition, splinerotation;
@@ -45,13 +47,31 @@ struct PlayMode : Mode {
         Scene::Transform *transform = nullptr;
         //camera is at player's head and will be pitched by mouse up/down motion:
         Scene::Camera *camera = nullptr;
-
+        
         //other metadata
-        std::string name;
+        std::string name = "Player";
     } player;
-
+    
     // Wireframe logics
-	std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
-	std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> current_wireframe_objects_map;
-	void update_wireframe();
+    bool has_paint_ability = false;
+    std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
+    std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> current_wireframe_objects_map;
+    //std::list<std::shared_ptr<Scene::Collider>> wf_obj_pass; // Object on walkmesh, blocked by invisible bbox when it's wireframe
+    std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> wf_obj_pass_map;
+    //std::list<std::shared_ptr<Scene::Collider>> wf_obj_block; // Normal object, blocked when it's real by bbox
+    std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> wf_obj_block_map;
+    
+    void update_wireframe();
+    
+    void initialize_wireframe_objects(std::string prefix);
+    
+    
+    // Unlock logics(for open sesame)
+    void unlock(std::string prefix);
+    
+    
+    //initilization functions
+    void initialize_scene_metadata();
+    
+    void initialize_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
 };
