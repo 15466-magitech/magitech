@@ -2,6 +2,8 @@
 
 #include "Scene.hpp"
 #include "WalkMesh.hpp"
+#include "Load.hpp"
+#include "Mesh.hpp"
 #include "Terminal.hpp"
 #include "Load.hpp"
 #include "Mesh.hpp"
