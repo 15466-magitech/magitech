@@ -26,7 +26,7 @@ GLuint artworld_meshes_for_lit_color_texture_program = 0;
 // });
 
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-    MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
+    MeshBuffer const *ret = new MeshBuffer(data_path("artworld_delete.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     return ret;
 });
@@ -39,7 +39,7 @@ Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 
 Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
     return new Scene(
-            data_path("artworld.scene"),
+            data_path("artworld_delete.scene"),
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 Mesh const &mesh = artworld_meshes->lookup(mesh_name);
                 
@@ -86,7 +86,7 @@ WalkMesh const *walkmesh = nullptr;
 
 
 Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
-    auto *ret = new WalkMeshes(data_path("artworld.w"));
+    auto *ret = new WalkMeshes(data_path("artworld_delete.w"));
     walkmesh = &ret->lookup("WalkMesh");
     return ret;
 });
@@ -629,9 +629,18 @@ void PlayMode::initialize_wireframe_objects(std::string prefix){
 
 // Should be called after all drawables are loaded into the list
 void PlayMode::initialize_scene_metadata(){
+    std::shared_ptr<Scene::Drawable> walkmesh_to_remove = nullptr;
     for(auto d : scene.drawables){
         std::string name = d->transform->name;
-        scene.drawble_name_map[name] = d;
+        if(name == "WalkMesh"){
+            walkmesh_to_remove = d;
+        }else{
+            scene.drawble_name_map[name] = d;
+        }
+    }
+
+    if(walkmesh_to_remove){
+        scene.drawables.remove(walkmesh_to_remove);
     }
 }
 
