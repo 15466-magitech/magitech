@@ -17,48 +17,81 @@
 
 #include <random>
 
-GLuint phonebank_meshes_for_lit_color_texture_program = 0;
-GLuint wizard_meshes_for_lit_color_texture_program = 0;
-Load<MeshBuffer> phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-    MeshBuffer const *ret = new MeshBuffer(data_path("phone-bank.pnct"));
-    phonebank_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+GLuint artworld_meshes_for_lit_color_texture_program = 0;
+//GLuint wizard_meshes_for_lit_color_texture_program = 0;
+// Load<MeshBuffer> phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+//     MeshBuffer const *ret = new MeshBuffer(data_path("phone-bank.pnct"));
+//     phonebank_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+//     return ret;
+// });
+
+Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+    MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
+    artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     return ret;
 });
 
-Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-    MeshBuffer const *ret = new MeshBuffer(data_path("wizard.pnct"));
-    wizard_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
-    return ret;
-});
+// Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+//     MeshBuffer const *ret = new MeshBuffer(data_path("wizard.pnct"));
+//     wizard_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+//     return ret;
+// });
 
-Load<Scene> phonebank_scene(LoadTagDefault, []() -> Scene const * {
+Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
     return new Scene(
-            data_path("phone-bank.scene"),
+            data_path("artworld.scene"),
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
-                Mesh const &mesh = phonebank_meshes->lookup(mesh_name);
+                Mesh const &mesh = artworld_meshes->lookup(mesh_name);
                 
                 scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
                 std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
                 
                 drawable->pipeline = lit_color_texture_program_pipeline;
                 
-                drawable->pipeline.vao = phonebank_meshes_for_lit_color_texture_program;
+                drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
                 drawable->pipeline.type = mesh.type;
                 drawable->pipeline.start = mesh.start;
                 drawable->pipeline.count = mesh.count;
                 drawable->wireframe_info.draw_frame = false;
-                drawable->wireframe_info.one_time_change = true;
+                drawable->wireframe_info.one_time_change = false;
             });
 });
 
+// Load<Scene> phonebank_scene(LoadTagDefault, []() -> Scene const * {
+//     return new Scene(
+//             data_path("phone-bank.scene"),
+//             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
+//                 Mesh const &mesh = phonebank_meshes->lookup(mesh_name);
+                
+//                 scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+//                 std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
+                
+//                 drawable->pipeline = lit_color_texture_program_pipeline;
+                
+//                 drawable->pipeline.vao = phonebank_meshes_for_lit_color_texture_program;
+//                 drawable->pipeline.type = mesh.type;
+//                 drawable->pipeline.start = mesh.start;
+//                 drawable->pipeline.count = mesh.count;
+//                 drawable->wireframe_info.draw_frame = false;
+//                 drawable->wireframe_info.one_time_change = true;
+//             });
+// });
+
 WalkMesh const *walkmesh = nullptr;
-Load<WalkMeshes> phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
-    auto *ret = new WalkMeshes(data_path("phone-bank.w"));
+// Load<WalkMeshes> phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
+//     auto *ret = new WalkMeshes(data_path("phone-bank.w"));
+//     walkmesh = &ret->lookup("WalkMesh");
+//     return ret;
+// });
+
+
+Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
+    auto *ret = new WalkMeshes(data_path("artworld.w"));
     walkmesh = &ret->lookup("WalkMesh");
     return ret;
 });
 
-PlayMode::PlayMode() : scene(*phonebank_scene) {
+PlayMode::PlayMode() : scene(*artworld_scene) {
     // TODO: remove this test code
     std::cout << "Testing basic ECS mechanics..." << std::endl;
     {
@@ -83,7 +116,13 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
     
     //create a player transform:
     scene.transforms.emplace_back();
-    player.transform = &scene.transforms.back();
+
+    for(auto &t: scene.transforms){
+        if(t.name == player.name){
+            player.transform = &t;
+        }
+    }
+    //player.transform = &scene.transforms.back();
     
     //create a player camera attached to a child of the player transform:
     scene.transforms.emplace_back();
@@ -106,24 +145,12 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
 
     //scene.transforms.emplace_back();
     //auto transform = &scene.transforms.back();
-    Scene::Transform *transform = player.transform;
     //transform->scale *= 2.0f;
-    Mesh const &mesh = wizard_meshes->lookup("wizard");
-    scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
-    std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
 
-    drawable->pipeline = lit_color_texture_program_pipeline;
-
-    drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
-    drawable->pipeline.type = mesh.type;
-    drawable->pipeline.start = mesh.start;
-    drawable->pipeline.count = mesh.count;
-    drawable->wireframe_info.draw_frame = false;
-    drawable->wireframe_info.one_time_change = false;
 
     initialize_scene_metadata();
-    initialize_collider("col_", phonebank_meshes);
-    initialize_wireframe_objects("wf_");
+    initialize_collider("col_", artworld_meshes);
+    initialize_wireframe_objects("col_wire");
 }
 
 PlayMode::~PlayMode() = default;
@@ -150,6 +177,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             down.downs += 1;
             down.pressed = true;
             return true;
+        } else if (evt.key.keysym.sym == SDLK_SPACE){
+            use.downs += 1;
+            use.pressed = true;
         }
     } else if (evt.type == SDL_KEYUP) {
         if (evt.key.keysym.sym == SDLK_a) {
@@ -163,6 +193,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             return true;
         } else if (evt.key.keysym.sym == SDLK_s) {
             down.pressed = false;
+            return true;
+        } else if (evt.key.keysym.sym == SDLK_SPACE){
+            use.pressed = false;
             return true;
         }
     } else if (evt.type == SDL_MOUSEBUTTONDOWN) {
@@ -210,6 +243,38 @@ void PlayMode::update(float elapsed) {
         
         //get move in world coordinate system:
         glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
+
+        update_wireframe();
+
+        //Collision
+        {
+            auto c = scene.collider_name_map[player.name];
+            bool has_collision = false;
+
+
+            // If there is collision, reverse the remain vector at the collision direction?
+            int idx = -1;
+            float overlap = std::numeric_limits<float>::infinity();
+
+
+
+            for( auto collider : scene.colliders){
+                if (collider->name == player.name){
+                    continue;
+                }else{
+                    if (c->intersect(collider)){
+                        has_collision = true;
+                        // Only one collision at a time?
+                        std::tie(idx,overlap) = c->least_collison_axis(collider);
+                        break;
+                    }
+                }
+            }
+
+            if (has_collision){
+                remain[idx] += overlap;
+            }
+        }
         
         //using a for() instead of a while() here so that if walkpoint gets stuck in
         // some awkward case, code will not infinite loop:
@@ -279,6 +344,9 @@ void PlayMode::update(float elapsed) {
         camera->transform->position += move.x * right + move.y * forward;
         */
     }
+
+    auto bbox = scene.collider_name_map[player.name];
+    bbox->update_BBox(player.transform);
     
     //reset button press counters:
     left.downs = 0;
@@ -312,6 +380,28 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
 	scene.draw(*player.camera, true);
 	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+
+
+
+     {
+        DrawLines draw_lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
+        //draw bounding box:
+        for(auto collider : scene.colliders){
+            auto current_mesh_max = collider->max;
+            auto current_mesh_min = collider->min;
+
+            glm::vec3 r = 0.5f * (current_mesh_max - current_mesh_min);
+            glm::vec3 c = 0.5f * (current_mesh_max + current_mesh_min);
+            glm::mat4x3 mat(
+                glm::vec3(r.x,  0.0f, 0.0f),
+                glm::vec3(0.0f,  r.y, 0.0f),
+                glm::vec3(0.0f, 0.0f,  r.z),
+                c
+            );
+            draw_lines.draw_box(mat, glm::u8vec4(0xdd, 0xdd, 0xdd, 0xff));
+        }
+		
+    }
     
     /* In case you are wondering if your walkmesh is lining up with your scene, try:
     {
@@ -352,72 +442,134 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 
 void PlayMode::update_wireframe(){
-    std::string name_to_add, name_to_remove;
-    std::shared_ptr<Scene::Collider> collider_to_add = nullptr;  // Add back to fully draw
-    std::shared_ptr<Scene::Collider> collider_to_remove = nullptr; // draw wireframe
+    std::string name_to_real, name_to_wireframe;
+    std::shared_ptr<Scene::Collider> collider_to_real = nullptr;  // Add back to fully draw
+    std::shared_ptr<Scene::Collider> collider_to_wireframe = nullptr; // draw wireframe
 
     // Test the frame thing?
     if (use.downs > 0 && !use.pressed){
         use.downs = 0;
         auto c = scene.collider_name_map[player.name];
-        // TODO, use a interactable object list, because there is no such list, need to use two seprate loops for now
 
-        // remove object, only draw wireframe
-        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
-            auto collider = *it;
-            if(collider->name == player.name){
-                continue;
-            }
-            auto dist = c->min_distance(collider);
-            if (dist < 0.5){
-                std::string name = collider->name;
-                // If this is already a wireframe
-                if (!current_wireframe_objects_map.count(name)){
-                    collider_to_remove = collider;
-                    name_to_remove = name;
-                    use.downs = 0;
-                    break;
-                
-                }   
-            }
-        }
-        if (collider_to_remove == nullptr){
-            // Add it back
-            for(auto &it : current_wireframe_objects_map){
-                std::string name = it.first;
-                auto collider = it.second;
+        if(has_paint_ability){
+            // remove real object, only draw wireframe
+            for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
+                auto collider = *it;
+                if(collider->name == player.name){
+                    continue;
+                }
                 auto dist = c->min_distance(collider);
-                if (dist < 0.5 && !c->intersect(collider)){
-                    collider_to_add = collider;
-                    name_to_add = name;
-                    use.downs = 0;
-                    break;
+                if (dist < 0.5){
+                    std::string name = collider->name;
+                    // If this is already a wireframe
+                    if (!current_wireframe_objects_map.count(name)){
+                        collider_to_wireframe = collider;
+                        name_to_wireframe = name;
+                        use.downs = 0;
+                        break;
+                    
+                    }   
                 }
             }
+            // turn wireframe object real
+            if (collider_to_wireframe == nullptr){
+                // Add it back
+                for(auto &it : current_wireframe_objects_map){
+                    std::string name = it.first;
+                    auto collider = it.second;
+                    auto dist = c->min_distance(collider);
+                    if (dist < 0.5 && !c->intersect(collider)){
+                        collider_to_real = collider;
+                        name_to_real = name;
+                        use.downs = 0;
+                        break;
+                    }
+                }
 
+            }
+        }else{ // Paintbrush case // This is ugly code but it works..
+            for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
+                auto collider = *it;
+                if(collider->name == player.name || collider->name.find("Paintbrush") == std::string::npos){
+                    continue;
+                } 
+                auto dist = c->min_distance(collider);
+                if (dist < 0.5){
+                    std::string name = collider->name;
+                    // If this is already a wireframe
+                    if (!current_wireframe_objects_map.count(name)){
+                        collider_to_wireframe = collider;
+                        name_to_wireframe = name;
+                        use.downs = 0;
+                        has_paint_ability = true;
+                        break;
+                    
+                    }   
+                }
+            }
+            if (collider_to_wireframe == nullptr){
+                // Add it back
+                for(auto &it : current_wireframe_objects_map){
+                    std::string name = it.first;
+                    if(name.find("Paintbrush") == std::string::npos){
+                        continue;
+                    } 
+
+                    auto collider = it.second;
+                    auto dist = c->min_distance(collider);
+                    if (dist < 0.5 && !c->intersect(collider)){
+                        collider_to_real = collider;
+                        name_to_real = name;
+                        use.downs = 0;
+                        has_paint_ability = true;
+                        break;
+                    }
+                }
+
+            }
         }
+        
 
     }
 
-    if(collider_to_add){
-        scene.colliders.push_back(collider_to_add);
-        current_wireframe_objects_map.erase(name_to_add);
-        auto d = scene.drawble_name_map[name_to_add];
+    if(collider_to_real){
+        // Add back bounding box
+        if(wf_obj_block_map.count(name_to_real)){
+            scene.colliders.push_back(collider_to_real);
+        }
+        // remove virtual bounding box
+        else if(wf_obj_pass_map.count(name_to_real)){
+            scene.colliders.remove(collider_to_real);
+        }
 
+        current_wireframe_objects_map.erase(name_to_real);
+        auto d = scene.drawble_name_map[name_to_real];
         // If first_time_add/remove
         if (d->wireframe_info.one_time_change){
-            wireframe_objects.remove(collider_to_add);
+            wireframe_objects.remove(collider_to_real);
+            wf_obj_block_map.erase(name_to_real);
+            wf_obj_pass_map.erase(name_to_real);
         }
         d->wireframe_info.draw_frame = false;
     }
 
-    if(collider_to_remove){
-        scene.colliders.remove(collider_to_remove);
-        current_wireframe_objects_map[name_to_remove] = collider_to_remove;
-        auto d = scene.drawble_name_map[name_to_remove];
+    if(collider_to_wireframe){
+        // remove bounding box
+        if(wf_obj_block_map.count(name_to_wireframe)){
+            scene.colliders.remove(collider_to_wireframe);
+        }else if (wf_obj_pass_map.count(name_to_wireframe)){
+            scene.colliders.push_back(collider_to_wireframe);
+        }
+
+
+        current_wireframe_objects_map[name_to_wireframe] = collider_to_wireframe;
+        auto d = scene.drawble_name_map[name_to_wireframe];
         // If first_time_add/remove
         if (d->wireframe_info.one_time_change){
-            wireframe_objects.remove(collider_to_add);
+            wireframe_objects.remove(collider_to_wireframe);
+            wf_obj_block_map.erase(name_to_wireframe);
+            wf_obj_pass_map.erase(name_to_wireframe);
+            current_wireframe_objects_map.erase(name_to_wireframe);
         }
         d->wireframe_info.draw_frame = true;
     }
@@ -433,17 +585,44 @@ void PlayMode::initialize_wireframe_objects(std::string prefix){
             wireframe_objects.push_back(c);
             // Only one time?
             auto d = scene.drawble_name_map[c->name];
-            if(c->name.find("onetime")){
+
+            if(c->name.find("pass")!=std::string::npos){
+                //wf_obj_pass.push_back(c);
+                wf_obj_pass_map[c->name] = c;
+            }else if(c->name.find("block")!=std::string::npos){
+                //wf_obj_block.push_back(c);
+                wf_obj_block_map[c->name] = c;
+            }else{
+                std::runtime_error("Unknown type of wireframe object");
+            }
+
+            if(c->name.find("onetime")!=std::string::npos){
                 d->wireframe_info.one_time_change = true;
             }else{
                 d->wireframe_info.one_time_change = false;
             }
-            if(c->name.find("on")){
+            if(c->name.find("on") != std::string::npos ){
                 d->wireframe_info.draw_frame = false;
             }else{
                 d->wireframe_info.draw_frame = true;
                 current_wireframe_objects_map[c->name] = c;
             }
+        }
+    }
+
+    // remove colliders in wf_obj_block_map && colliders is currently wireframe
+    // remove colliders in wf_obj_pass_map && colliders is currently real
+    for(auto it : wf_obj_block_map){
+        auto d = scene.drawble_name_map[it.second->name];
+        if (d->wireframe_info.draw_frame == true){
+            scene.colliders.remove(it.second);
+        }
+    }
+
+    for(auto it: wf_obj_pass_map){
+        auto d = scene.drawble_name_map[it.second->name];
+        if(d->wireframe_info.draw_frame == false){
+            scene.colliders.remove(it.second);
         }
     }
 }
@@ -464,7 +643,7 @@ void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes){
 	for(auto &it : meshes->meshes){
         std::string name = it.first;
         auto mesh = it.second;
-        if(name.find(prefix)!=std::string::npos){
+        if(name.find(prefix)!=std::string::npos || name == "Player"){
             glm::vec3 min = mesh.min;
             glm::vec3 max = mesh.max;
             auto collider = std::make_shared<Scene::Collider>(name,min,max,min,max);
@@ -472,6 +651,6 @@ void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes){
             collider->update_BBox(d->transform);
             scene.colliders.push_back(collider);
             scene.collider_name_map[name] = collider;
-        }
+        } 
     }
 }
