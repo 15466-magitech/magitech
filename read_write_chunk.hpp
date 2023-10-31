@@ -31,7 +31,7 @@ void read_chunk(std::istream &from, std::string const &magic, std::vector< T > *
 	}
 
 	if (header.size % sizeof(T) != 0) {
-		throw std::runtime_error("Size of chunk not divisible by element size");
+		throw std::runtime_error("size of chunk not divisible by element size");
 	}
 
 	to.resize(header.size / sizeof(T));

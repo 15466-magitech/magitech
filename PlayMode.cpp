@@ -44,7 +44,7 @@ Load<Scene> phonebank_scene(LoadTagDefault, []() -> Scene const * {
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 Mesh const &mesh = phonebank_meshes->lookup(mesh_name);
                 
-                scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+                scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
                 std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
                 
                 drawable->pipeline = lit_color_texture_program_pipeline;
@@ -64,7 +64,9 @@ Load<WalkMeshes> phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
     return ret;
 });
 
-PlayMode::PlayMode() : scene(*phonebank_scene) {
+PlayMode::PlayMode()
+        : terminal(10, 30, glm::vec2(0, 0), glm::vec2(0.4f, 0.4f)),
+          scene(*phonebank_scene) {
     // TODO: remove this test code
     std::cout << "Testing basic ECS mechanics..." << std::endl;
     {
@@ -75,16 +77,16 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
     }
     std::cout << "Success!" << std::endl;
     {
-    std::cout << "Testing spline" << std::endl;
-    glm::vec2 start(2.0, 0.0);
-    glm::vec2 end(0.0, 2.0);
-    Spline<glm::vec2> spline;
-    spline.set(0.0, start);
-    spline.set(1.0, end);
-    glm::vec2 query = spline.at(0.5);
-    assert(query.x == 1.0);
-    assert(query.y == 1.0);
-    std::cout << "spline ok" << std::endl;
+        std::cout << "Testing spline" << std::endl;
+        glm::vec2 start(2.0, 0.0);
+        glm::vec2 end(0.0, 2.0);
+        Spline<glm::vec2> spline;
+        spline.set(0.0, start);
+        spline.set(1.0, end);
+        glm::vec2 query = spline.at(0.5);
+        assert(query.x == 1.0);
+        assert(query.y == 1.0);
+        std::cout << "spline ok" << std::endl;
     }
     
     //create a player transform:
@@ -100,7 +102,7 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
     player.camera->transform->parent = player.transform;
     
     //default view point behind player
-    player.camera->transform->position = glm::vec3(-2.5f, -5.0f, 2.5f);
+    player.camera->transform->position = glm::vec3(-0.0f, -5.0f, 2.5f);
     
     //rotate camera to something pointing in way of player
     // arcsin 0.1 ~ 6 degrees
@@ -143,9 +145,10 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
 PlayMode::~PlayMode() = default;
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
-    
     if (evt.type == SDL_KEYDOWN) {
-        if (evt.key.keysym.sym == SDLK_ESCAPE) {
+        if (terminal.handle_key(evt.key.keysym.sym)) {
+            return true;
+        } else if (evt.key.keysym.sym == SDLK_ESCAPE) {
             SDL_SetRelativeMouseMode(SDL_FALSE);
             return true;
         } else if (evt.key.keysym.sym == SDLK_a) {
@@ -164,6 +167,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             down.downs += 1;
             down.pressed = true;
             return true;
+        } else if (evt.key.keysym.sym == SDLK_e) {
+            terminal.activate();
         }
     } else if (evt.type == SDL_KEYUP) {
         if (evt.key.keysym.sym == SDLK_a) {
@@ -327,39 +332,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	scene.draw(*player.camera, true);
 	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     
-    /* In case you are wondering if your walkmesh is lining up with your scene, try:
-    {
-        glDisable(GL_DEPTH_TEST);
-        DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
-        for (auto const &tri : walkmesh->triangles) {
-            lines.draw(walkmesh->vertices[tri.x], walkmesh->vertices[tri.y], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-            lines.draw(walkmesh->vertices[tri.y], walkmesh->vertices[tri.z], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-            lines.draw(walkmesh->vertices[tri.z], walkmesh->vertices[tri.x], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-        }
-    }
-    */
+    terminal.draw();
     
-    { //use DrawLines to overlay some text:
-        glDisable(GL_DEPTH_TEST);
-        float aspect = float(drawable_size.x) / float(drawable_size.y);
-        DrawLines lines(glm::mat4(
-                1.0f / aspect, 0.0f, 0.0f, 0.0f,
-                0.0f, 1.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f,
-                0.0f, 0.0f, 0.0f, 1.0f
-        ));
-        
-        constexpr float H = 0.09f;
-        lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
-                        glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
-                        glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-                        glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-        float ofs = 2.0f / drawable_size.y;
-        lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
-                        glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + +0.1f * H + ofs, 0.0),
-                        glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-                        glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-    }
     GL_ERRORS();
 }
 
@@ -392,7 +366,7 @@ void PlayMode::update_wireframe(){
                     use.downs = 0;
                     break;
                 
-                }   
+                }
             }
         }
         if (collider_to_remove == nullptr){
