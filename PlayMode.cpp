@@ -198,50 +198,76 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             use.pressed = false;
             return true;
         }
-    }
+    }else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
+			SDL_SetRelativeMouseMode(SDL_TRUE);
+			return true;
+		}
+	} else if (evt.type == SDL_MOUSEMOTION) {
+		if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
+			glm::vec2 motion = glm::vec2(
+				evt.motion.xrel / float(window_size.y),
+				-evt.motion.yrel / float(window_size.y)
+			);
+			glm::vec3 upDir = walkmesh->to_world_smooth_normal(player.at);
+
+            auto rotation = glm::angleAxis(-motion.x * player.camera->fovy, upDir);
+
+			player.transform->rotation = rotation  * player.transform->rotation;
+            player.direction = rotation * glm::vec4(player.direction,0.0);
+			return true;
+		}
+	}
     
     return false;
 }
 
 void PlayMode::update(float elapsed) {    
-    constexpr float PlayerSpeed = 1.0f;
-    float move = 0.0f;
-    if (down.pressed && !up.pressed) move =-1.0f;
-    if (!down.pressed && up.pressed) move = 1.0f;
+    constexpr float PlayerSpeed = 3.0f;
+    glm::vec2 move = glm::vec2(0.0f);
+    if (left.pressed && !right.pressed) move.x = -1.0f;
+    if (!left.pressed && right.pressed) move.x = 1.0f;
+    if (down.pressed && !up.pressed) move.y = -1.0f;
+    if (!down.pressed && up.pressed) move.y = 1.0f;
 
     //make it so that moving diagonally doesn't go faster:
-    if (move != 0.0f) move = move * PlayerSpeed * elapsed;
+    if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
 
 
-    {
-        //rotate the player
-        auto normal = walkmesh->to_world_triangle_normal(player.at);
-        glm::vec3 dir = player.direction;
-        if(left.pressed && !right.pressed){
-            auto rotation = glm::angleAxis(glm::radians(80.0f * elapsed),normal);
-            dir = rotation * glm::vec4(dir,0.0);
-            player.direction = dir;
-            player.transform->rotation *= rotation;
-        }
+    glm::vec3 dir = player.direction;
+    glm::vec3 normal = walkmesh->to_world_triangle_normal(player.at);
+    glm::vec3 right_vec = glm::cross(dir,normal);
 
-        if(!left.pressed && right.pressed){
-            auto rotation = glm::angleAxis(glm::radians(-80.0f * elapsed),normal);
-            dir = rotation * glm::vec4(dir,0.0);
-            player.direction = dir;
-            player.transform->rotation *= rotation;
-        }
-    }
+    glm::vec3 remain = move.x * right_vec + move.y * dir; 
+    // {
+    //     //rotate the player
+    //     auto normal = walkmesh->to_world_triangle_normal(player.at);
+    //     glm::vec3 dir = player.direction;
+    //     if(left.pressed && !right.pressed){
+    //         auto rotation = glm::angleAxis(glm::radians(80.0f * elapsed),normal);
+    //         dir = rotation * glm::vec4(dir,0.0);
+    //         player.direction = dir;
+    //         player.transform->rotation *= rotation;
+    //     }
+
+    //     if(!left.pressed && right.pressed){
+    //         auto rotation = glm::angleAxis(glm::radians(-80.0f * elapsed),normal);
+    //         dir = rotation * glm::vec4(dir,0.0);
+    //         player.direction = dir;
+    //         player.transform->rotation *= rotation;
+    //     }
+    // }
 
 
 
     //get move in world coordinate system:
     //glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
-    glm::vec3 remain = glm::vec3(0.0f);
-    if (move != 0.0f){
-        remain = glm::normalize(player.direction) * move;
-        //printf("direction:[%.3f,%.3f,%.3f]\n",player.direction.x,player.direction.y,player.direction.z);
-        //printf("remain:[%.3f,%.3f,%.3f]\n",remain.x,remain.y,remain.z);
-    }
+    // glm::vec3 remain = glm::vec3(0.0f);
+    // if (move != 0.0f){
+    //     remain = glm::normalize(player.direction) * move;
+    //     //printf("direction:[%.3f,%.3f,%.3f]\n",player.direction.x,player.direction.y,player.direction.z);
+    //     //printf("remain:[%.3f,%.3f,%.3f]\n",remain.x,remain.y,remain.z);
+    // }
 
 
     update_wireframe();
