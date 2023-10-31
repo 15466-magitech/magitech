@@ -49,17 +49,9 @@ Load<WalkMeshes> phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
     return ret;
 });
 
-PlayMode::PlayMode() : scene(*phonebank_scene) {
-    // TODO: remove this test code
-    std::cout << "Testing basic ECS mechanics..." << std::endl;
-    {
-        Entity a;
-        a.add_component<EventHandler>([](const SDL_Event &evt, const glm::uvec2 &window_size) {
-            return false;
-        });
-    }
-    std::cout << "Success!" << std::endl;
-    
+PlayMode::PlayMode()
+        : terminal(10, 30, glm::vec2(0, 0), glm::vec2(0.4f, 0.4f)),
+          scene(*phonebank_scene) {
     //create a player transform:
     scene.transforms.emplace_back();
     player.transform = &scene.transforms.back();
@@ -85,9 +77,10 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
 PlayMode::~PlayMode() = default;
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
-    
     if (evt.type == SDL_KEYDOWN) {
-        if (evt.key.keysym.sym == SDLK_ESCAPE) {
+        if (terminal.handle_key(evt.key.keysym.sym)) {
+            return true;
+        } else if (evt.key.keysym.sym == SDLK_ESCAPE) {
             SDL_SetRelativeMouseMode(SDL_FALSE);
             return true;
         } else if (evt.key.keysym.sym == SDLK_a) {
@@ -106,6 +99,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             down.downs += 1;
             down.pressed = true;
             return true;
+        } else if (evt.key.keysym.sym == SDLK_e) {
+            terminal.activate();
         }
     } else if (evt.type == SDL_KEYUP) {
         if (evt.key.keysym.sym == SDLK_a) {
@@ -264,38 +259,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     scene.draw(*player.camera);
     
-    /* In case you are wondering if your walkmesh is lining up with your scene, try:
-    {
-        glDisable(GL_DEPTH_TEST);
-        DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
-        for (auto const &tri : walkmesh->triangles) {
-            lines.draw(walkmesh->vertices[tri.x], walkmesh->vertices[tri.y], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-            lines.draw(walkmesh->vertices[tri.y], walkmesh->vertices[tri.z], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-            lines.draw(walkmesh->vertices[tri.z], walkmesh->vertices[tri.x], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-        }
-    }
-    */
+    terminal.draw();
     
-    { //use DrawLines to overlay some text:
-        glDisable(GL_DEPTH_TEST);
-        float aspect = float(drawable_size.x) / float(drawable_size.y);
-        DrawLines lines(glm::mat4(
-                1.0f / aspect, 0.0f, 0.0f, 0.0f,
-                0.0f, 1.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f,
-                0.0f, 0.0f, 0.0f, 1.0f
-        ));
-        
-        constexpr float H = 0.09f;
-        lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
-                        glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
-                        glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-                        glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-        float ofs = 2.0f / drawable_size.y;
-        lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
-                        glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + +0.1f * H + ofs, 0.0),
-                        glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-                        glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-    }
     GL_ERRORS();
 }
