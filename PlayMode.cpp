@@ -55,6 +55,8 @@ Load< WalkMeshes > walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
 
 
 PlayMode::PlayMode() : scene(*mesh_scene) {
+
+    // Build AABB bounding boxes
     for(auto &t : scene.transforms){
         auto name = t.name;
         //We don't need these bounding boxes
@@ -68,10 +70,31 @@ PlayMode::PlayMode() : scene(*mesh_scene) {
         scene.collider_name_map[name] = collider;
     }
 
+
+
     for(auto &d : scene.drawables){
         std::string name = d->transform->name;
         scene.drawble_name_map[name] = d;
     }
+
+
+        // Build wireframe obj list
+    for(auto & c : scene.colliders){
+        if(c->name == "obstacle"){
+            wireframe_objects.push_back(c);
+        }
+
+        if(c->name == "door"){
+            wireframe_objects.push_back(c);
+            auto d = scene.drawble_name_map[c->name];
+            current_wireframe_objects_map[c->name] = c;
+            d->wireframe_info.draw_frame = true;
+            d->wireframe_info.one_time_change = true;
+        }
+    }
+    
+    auto c = scene.collider_name_map["door"];
+    scene.colliders.remove(c);
 
 
 
@@ -92,24 +115,27 @@ PlayMode::PlayMode() : scene(*mesh_scene) {
 	// }
 
 
+    //Debug camera
+    //player.camera = &scene.cameras.back();
+
+
 	//create a player camera attached to a child of the player transform:
-	//scene.transforms.emplace_back();
-	//scene.cameras.emplace_back(&scene.transforms.back());
+	scene.transforms.emplace_back();
+	scene.cameras.emplace_back(&scene.transforms.back());
 	player.camera = &scene.cameras.back();
 
-	// player.camera->fovy = glm::radians(60.0f);
-	// player.camera->near = 0.01f;
-	// player.camera->transform->parent = player.transform;
+	player.camera->fovy = glm::radians(60.0f);
+	player.camera->near = 0.01f;
+	player.camera->transform->parent = player.transform;
 
-	// //debug
-	// //player.transform->position = glm::vec3(0.6,8.7,1.9);
+	//debug
+	//player.transform->position = glm::vec3(0.6,8.7,1.9);
 
-	// //player's eyes are 0.5 units above the ground and behind the car:
-	// player.camera->transform->position = glm::vec3(-0.4f, 0.0f, 0.15f);
+	player.camera->transform->position = glm::vec3(-2.0f, 0.0f, 2.0f);
 
-	// //rotate camera facing direction (-z) to player facing direction (-x):
-	// player.camera->transform->rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	// player.camera->transform->rotation *= glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	//rotate camera facing direction (-z) to player facing direction (-x):
+	player.camera->transform->rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	player.camera->transform->rotation *= glm::angleAxis(glm::radians(70.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
 
 	//start player walking at nearest walk point:
@@ -177,122 +203,145 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
     return false;
 }
 
-void PlayMode::update(float elapsed) {
-    
-    
-    constexpr float PlayerSpeed = 3.0f;
-    glm::vec2 move = glm::vec2(0.0f);
-    if (left.pressed && !right.pressed) move.x =-1.0f;
-    if (!left.pressed && right.pressed) move.x = 1.0f;
-    if (down.pressed && !up.pressed) move.y =-1.0f;
-    if (!down.pressed && up.pressed) move.y = 1.0f;
+void PlayMode::update(float elapsed) {    
+    constexpr float PlayerSpeed = 1.0f;
+    float move = 0.0f;
+    if (down.pressed && !up.pressed) move =-1.0f;
+    if (!down.pressed && up.pressed) move = 1.0f;
 
     //make it so that moving diagonally doesn't go faster:
-    if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
-
-    //get move in world coordinate system:
-    glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
+    if (move != 0.0f) move = move * PlayerSpeed * elapsed;
 
 
     {
+        //rotate the player
+        auto normal = walkmesh->to_world_triangle_normal(player.at);
+        glm::vec3 dir = player.direction;
+        if(left.pressed && !right.pressed){
+            auto rotation = glm::angleAxis(glm::radians(80.0f * elapsed),normal);
+            dir = rotation * glm::vec4(dir,0.0);
+            player.direction = dir;
+            player.transform->rotation *= rotation;
+        }
 
-        std::string name_to_add, name_to_remove;
-        std::shared_ptr<Scene::Collider> collider_to_add = nullptr;  // Add back to fully draw
-        std::shared_ptr<Scene::Collider> collider_to_remove = nullptr; // draw wireframe
+        if(!left.pressed && right.pressed){
+            auto rotation = glm::angleAxis(glm::radians(-80.0f * elapsed),normal);
+            dir = rotation * glm::vec4(dir,0.0);
+            player.direction = dir;
+            player.transform->rotation *= rotation;
+        }
+    }
 
-        // Test the frame thing?
-        if (use.downs > 0 && !use.pressed){
-            use.downs = 0;
-            auto c = scene.collider_name_map[player.name];
-            // TODO, use a interactable object list, because there is no such list, need to use two seprate loops for now
 
-            // remove object, only draw wireframe
-            for (auto it = scene.colliders.begin(); it != scene.colliders.end(); it ++){
-                auto collider = *it;
-                if(collider->name == player.name){
-                    continue;
-                }
-                auto dist = c->min_distance(collider);
-                if (dist < 0.5){
-                    std::string name = collider->name;
-                    // If this is already a wireframe
-                    if (!wireframe_objects.count(name)){
-                        collider_to_remove = collider;
-                        name_to_remove = name;
-                        use.downs = 0;
-                        break;
-                    
-                    }   
+
+    //get move in world coordinate system:
+    //glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
+    glm::vec3 remain = glm::vec3(0.0f);
+    if (move != 0.0f){
+        remain = glm::normalize(player.direction) * move;
+        //printf("direction:[%.3f,%.3f,%.3f]\n",player.direction.x,player.direction.y,player.direction.z);
+        //printf("remain:[%.3f,%.3f,%.3f]\n",remain.x,remain.y,remain.z);
+    }
+
+
+    update_wireframe();
+
+
+
+    // Collision
+    {
+
+        auto c = scene.collider_name_map[player.name];
+        bool has_collision = false;
+
+
+        // If there is collision, reverse the remain vector at the collision direction?
+        int idx = -1;
+        float overlap = std::numeric_limits<float>::infinity();
+
+
+
+        for( auto collider : scene.colliders){
+            if (collider->name == player.name){
+                continue;
+            }else{
+                if (c->intersect(collider)){
+                    has_collision = true;
+                    // Only one collision at a time?
+                    std::tie(idx,overlap) = c->least_collison_axis(collider);
+                    break;
                 }
             }
-            if (collider_to_remove == nullptr){
-                // Add it back
-                for(auto &it : wireframe_objects){
-                    std::string name = it.first;
-                    auto collider = it.second;
-                    auto dist = c->min_distance(collider);
-                    if (dist < 0.5 && !c->intersect(collider)){
-                        collider_to_add = collider;
-                        name_to_add = name;
-                        use.downs = 0;
-                        break;
-                    }
-                }
-
-            }
-
         }
 
-        if(collider_to_add){
-            scene.colliders.push_back(collider_to_add);
-            wireframe_objects.erase(name_to_add);
-            auto d = scene.drawble_name_map[name_to_add];
-            d->draw_frame = false;
+        if (has_collision){
+            remain[idx] += overlap;
         }
 
-        if(collider_to_remove){
-            scene.colliders.remove(collider_to_remove);
-            wireframe_objects[name_to_remove] = collider_to_remove;
-            auto d = scene.drawble_name_map[name_to_remove];
-            d->draw_frame = true;
-        }
 
     }
 
 
+    // update player direction?
+    {
+        // https://gamedev.stackexchange.com/questions/188984/rotating-an-object-to-face-the-same-direction-as-another-object
+        // if (glm::length2(remain) != 0.0f){
+        //     glm::vec3 normal = walkmesh->to_world_smooth_normal(player.at);
+        //     glm::vec3 vertical_n = glm::dot(normal,remain) * normal;
+        //     glm::vec3 horizontal_n = remain - vertical_n;
+
+        //     horizontal_n = glm::normalize(horizontal_n);
+        //     glm::vec3 dir = glm::normalize(player.direction);
+
+        //     glm::vec3 cross_product = glm::cross(horizontal_n, dir);
+
+        //     float sine = glm::length(cross_product);
+        //     float angle = glm::asin(sine);
+
+        //     glm::vec3 axis = cross_product / sine;
+        //     glm::vec3 imaginary = glm::sin(angle/2.0f) * axis;
+
+        //     glm::quat quartenion;
+        //     quartenion.w = glm::cos(angle/2.0f);
+        //     quartenion.x = imaginary.x;
+        //     quartenion.y = imaginary.y;
+        //     quartenion.z = imaginary.z;
+
+        //     player.transform->rotation *= quartenion;
+        // }
+
+        //https://iquilezles.org/articles/noacos/
+        [[maybe_unused]] auto rotation_align = [](glm::vec3 &d, glm::vec3 &z)->glm::mat3x3{
+            const glm::vec3  v = cross( z, d );
+            const float c = dot( z, d );
+            const float k = 1.0f/(1.0f+c);
+
+            return glm::mat3x3( v.x*v.x*k + c,     v.y*v.x*k - v.z,    v.z*v.x*k + v.y,
+                        v.x*v.y*k + v.z,   v.y*v.y*k + c,      v.z*v.y*k - v.x,
+                        v.x*v.z*k - v.y,   v.y*v.z*k + v.x,    v.z*v.z*k + c    );
+        };
+       
+        // if ( glm::length2(remain)!=0.0f){
+        //     glm::vec3 normal = walkmesh->to_world_smooth_normal(player.at);
+        //     glm::vec3 vertical_n = glm::dot(normal,remain) * normal;
+        //     glm::vec3 horizontal_n = remain - vertical_n;
+
+        //     horizontal_n = glm::normalize(horizontal_n);
+        //     glm::vec3 dir = glm::normalize(player.direction);
+
+        //     glm::vec3 cross_product = glm::cross(horizontal_n, dir);
+
+        //     float sine = glm::length(cross_product);
+        //     float angle = glm::asin(sine);
 
 
-    auto c = scene.collider_name_map[player.name];
-    bool has_collision = false;
-
-
-    // If there is collision, reverse the remain vector at the collision direction?
-    int idx = -1;
-    float overlap = std::numeric_limits<float>::infinity();
-
-
-
-    for( auto collider : scene.colliders){
-        if (collider->name == player.name){
-            continue;
-        }else{
-            if (c->intersect(collider)){
-                has_collision = true;
-                // Only one collision at a time?
-                std::tie(idx,overlap) = c->least_collison_axis(collider);
-                break;
-            }
-        }
+        //     auto rotation = glm::angleAxis(angle,normal);
+        //     player.transform->rotation *= rotation;
+        //     player.direction = rotation * player.direction;
+        //     printf("updated direction:[%.3f,%.3f,%.3f]\n",player.direction.x,player.direction.y,player.direction.z);
+        // }
     }
 
-    if (has_collision){
-        remain[idx] += overlap;
-    }
-
-
-
-
-    
 
 
     //using a for() instead of a while() here so that if walkpoint gets stuck in
@@ -465,4 +514,79 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 	}
 	GL_ERRORS();
+}
+
+
+
+
+void PlayMode::update_wireframe(){
+    std::string name_to_add, name_to_remove;
+    std::shared_ptr<Scene::Collider> collider_to_add = nullptr;  // Add back to fully draw
+    std::shared_ptr<Scene::Collider> collider_to_remove = nullptr; // draw wireframe
+
+    // Test the frame thing?
+    if (use.downs > 0 && !use.pressed){
+        use.downs = 0;
+        auto c = scene.collider_name_map[player.name];
+        // TODO, use a interactable object list, because there is no such list, need to use two seprate loops for now
+
+        // remove object, only draw wireframe
+        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
+            auto collider = *it;
+            if(collider->name == player.name){
+                continue;
+            }
+            auto dist = c->min_distance(collider);
+            if (dist < 0.5){
+                std::string name = collider->name;
+                // If this is already a wireframe
+                if (!current_wireframe_objects_map.count(name)){
+                    collider_to_remove = collider;
+                    name_to_remove = name;
+                    use.downs = 0;
+                    break;
+                
+                }   
+            }
+        }
+        if (collider_to_remove == nullptr){
+            // Add it back
+            for(auto &it : current_wireframe_objects_map){
+                std::string name = it.first;
+                auto collider = it.second;
+                auto dist = c->min_distance(collider);
+                if (dist < 0.5 && !c->intersect(collider)){
+                    collider_to_add = collider;
+                    name_to_add = name;
+                    use.downs = 0;
+                    break;
+                }
+            }
+
+        }
+
+    }
+
+    if(collider_to_add){
+        scene.colliders.push_back(collider_to_add);
+        current_wireframe_objects_map.erase(name_to_add);
+        auto d = scene.drawble_name_map[name_to_add];
+
+        // If first_time_add/remove
+        if (d->wireframe_info.one_time_change){
+            wireframe_objects.remove(collider_to_add);
+        }
+        d->wireframe_info.draw_frame = false;
+    }
+
+    if(collider_to_remove){
+        scene.colliders.remove(collider_to_remove);
+        current_wireframe_objects_map[name_to_remove] = collider_to_remove;
+        auto d = scene.drawble_name_map[name_to_remove];
+        // If first_time_add/remove
+        if (d->wireframe_info.one_time_change){
+            wireframe_objects.remove(collider_to_add);
+        }
+        d->wireframe_info.draw_frame = true;
+    }
 }

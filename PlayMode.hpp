@@ -39,7 +39,7 @@ struct PlayMode : Mode {
 		glm::vec3 speed{-0.01f,0.0f,0.0f};
 		bool on_walkmesh = true;
 		float max_speed = 2.0f;
-		glm::vec3 direction = {-1.0f,0.0f,0.0f};
+		glm::vec3 direction = {1.0f,0.0f,0.0f};
 		Scene::Transform *original_transform = nullptr;
 		uint8_t reset_time = 3;
 		std::string name = "player";
@@ -47,7 +47,9 @@ struct PlayMode : Mode {
 
 
 	//----- game state -----
-	std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> wireframe_objects;
+	std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
+	std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> current_wireframe_objects_map;
+	void update_wireframe();
 
 
 	//last message from server:

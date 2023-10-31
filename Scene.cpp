@@ -98,7 +98,7 @@ void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_lig
 
 	//Iterate through all drawables, sending each one to OpenGL:
 	for (auto const &drawable : drawables) {
-		if (drawable->draw_frame != draw_frame){
+		if (drawable->wireframe_info.draw_frame != draw_frame){
 			continue;
 		}
 		//Reference to drawable's pipeline for convenience:
@@ -548,7 +548,8 @@ std::pair<int, float> Scene::Collider::least_collison_axis(std::shared_ptr<Scene
 
 	float min_overlap = std::numeric_limits<float>::infinity();
 	int idx = -1;
-
+	float m1 = 0.0;
+	float m2 = 0.0;
 
 	for(auto i = 0; i < 3; i++){
 		float min1 = min[i];
@@ -562,18 +563,19 @@ std::pair<int, float> Scene::Collider::least_collison_axis(std::shared_ptr<Scene
 		assert(tmp >= 0.0);
 		
 		if (tmp < min_overlap){
-			if(max1 < max2){
-				tmp = -tmp;
-			}
+			m1 = max1;
+			m2 = max2;
 			min_overlap = tmp;
 			idx = i;
 		}
 	}
 
 
-	assert(!(min[idx] > c->min[idx] && max[idx] < c->max[idx]));
-	assert(!(min[idx] < c->min[idx] && max[idx] > c->max[idx]));
-
+	//assert(!(min[idx] > c->min[idx] && max[idx] < c->max[idx]));
+	//assert(!(min[idx] < c->min[idx] && max[idx] > c->max[idx]));
+	if (m1 < m2){
+		min_overlap = -min_overlap;
+	}
 
 	return std::make_pair(idx,min_overlap);
 }

@@ -57,7 +57,11 @@ struct Scene {
 	};
 
 	struct Drawable {
-		bool draw_frame = false;
+		struct{
+			bool draw_frame = false;
+			bool one_time_change = false;
+		} wireframe_info;
+
 
 		//a 'Drawable' attaches attribute data to a transform:
 		Drawable(Transform *transform_) : transform(transform_) { assert(transform); }
