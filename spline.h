@@ -6,6 +6,10 @@
 #include <map>
 #include <set>
 
+/**
+Add times and positions to spline with set(time, position)
+Obtain interpolated position with at(time)
+*/
 template<typename T> class Spline {
 public:
 

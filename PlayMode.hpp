@@ -29,7 +29,7 @@ struct PlayMode : Mode {
     struct Button {
         uint8_t downs = 0;
         uint8_t pressed = 0;
-    } left, right, down, up;
+    } left, right, down, up , use;
     
     //local copy of the game scene (so code can change it during gameplay):
     Scene scene;
@@ -41,5 +41,13 @@ struct PlayMode : Mode {
         Scene::Transform *transform = nullptr;
         //camera is at player's head and will be pitched by mouse up/down motion:
         Scene::Camera *camera = nullptr;
+
+        //other metadata
+        std::string name;
     } player;
+
+    // Wireframe logics
+	std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
+	std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> current_wireframe_objects_map;
+	void update_wireframe();
 };

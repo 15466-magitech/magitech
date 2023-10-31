@@ -9,6 +9,7 @@
 #include "data_path.hpp"
 #include "ECS/Entity.hpp"
 #include "ECS/Components/EventHandler.hpp"
+#include "spline.h"
 
 
 #include <glm/gtc/type_ptr.hpp>
@@ -17,9 +18,23 @@
 #include <random>
 
 GLuint phonebank_meshes_for_lit_color_texture_program = 0;
+GLuint wizard_meshes_for_lit_color_texture_program = 0;
+GLuint textcube_meshes_for_lit_color_texture_program = 0;
 Load<MeshBuffer> phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("phone-bank.pnct"));
     phonebank_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    return ret;
+});
+
+Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+    MeshBuffer const *ret = new MeshBuffer(data_path("wizard.pnct"));
+    wizard_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    return ret;
+});
+
+Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+    MeshBuffer const *ret = new MeshBuffer(data_path("textcube.pnct"));
+    textcube_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     return ret;
 });
 
@@ -29,15 +44,15 @@ Load<Scene> phonebank_scene(LoadTagDefault, []() -> Scene const * {
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 Mesh const &mesh = phonebank_meshes->lookup(mesh_name);
                 
-                scene.drawables.emplace_back(transform);
-                Scene::Drawable &drawable = scene.drawables.back();
+                scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
+                std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
                 
-                drawable.pipeline = lit_color_texture_program_pipeline;
+                drawable->pipeline = lit_color_texture_program_pipeline;
                 
-                drawable.pipeline.vao = phonebank_meshes_for_lit_color_texture_program;
-                drawable.pipeline.type = mesh.type;
-                drawable.pipeline.start = mesh.start;
-                drawable.pipeline.count = mesh.count;
+                drawable->pipeline.vao = phonebank_meshes_for_lit_color_texture_program;
+                drawable->pipeline.type = mesh.type;
+                drawable->pipeline.start = mesh.start;
+                drawable->pipeline.count = mesh.count;
                 
             });
 });
@@ -52,6 +67,28 @@ Load<WalkMeshes> phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
 PlayMode::PlayMode()
         : terminal(10, 30, glm::vec2(0, 0), glm::vec2(0.4f, 0.4f)),
           scene(*phonebank_scene) {
+    // TODO: remove this test code
+    std::cout << "Testing basic ECS mechanics..." << std::endl;
+    {
+        Entity a;
+        a.add_component<EventHandler>([](const SDL_Event &evt, const glm::uvec2 &window_size) {
+            return false;
+        });
+    }
+    std::cout << "Success!" << std::endl;
+    {
+        std::cout << "Testing spline" << std::endl;
+        glm::vec2 start(2.0, 0.0);
+        glm::vec2 end(0.0, 2.0);
+        Spline<glm::vec2> spline;
+        spline.set(0.0, start);
+        spline.set(1.0, end);
+        glm::vec2 query = spline.at(0.5);
+        assert(query.x == 1.0);
+        assert(query.y == 1.0);
+        std::cout << "spline ok" << std::endl;
+    }
+    
     //create a player transform:
     scene.transforms.emplace_back();
     player.transform = &scene.transforms.back();
@@ -64,14 +101,45 @@ PlayMode::PlayMode()
     player.camera->near = 0.01f;
     player.camera->transform->parent = player.transform;
     
-    //player's eyes are 1.8 units above the ground:
-    player.camera->transform->position = glm::vec3(0.0f, 0.0f, 1.8f);
+    //default view point behind player
+    player.camera->transform->position = glm::vec3(-0.0f, -5.0f, 2.5f);
     
-    //rotate camera facing direction (-z) to player facing direction (+y):
-    player.camera->transform->rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    //rotate camera to something pointing in way of player
+    // arcsin 0.1 ~ 6 degrees
+    player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+    //glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     
     //start player walking at nearest walk point:
     player.at = walkmesh->nearest_walk_point(player.transform->position);
+
+    //scene.transforms.emplace_back();
+    //auto transform = &scene.transforms.back();
+    Scene::Transform *transform = player.transform;
+    //transform->scale *= 2.0f;
+    Mesh const &mesh = wizard_meshes->lookup("wizard");
+    scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+    std::shared_ptr<Scene::Drawable> drawable = scene.drawables.back();
+
+    drawable->pipeline = lit_color_texture_program_pipeline;
+
+    drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
+    drawable->pipeline.type = mesh.type;
+    drawable->pipeline.start = mesh.start;
+    drawable->pipeline.count = mesh.count;
+
+    scene.transforms.emplace_back();
+    transform = &scene.transforms.back();
+    transform->position = glm::vec3(2.0, 2.0, 2.0);
+    scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+    drawable = scene.drawables.back();
+
+    drawable->pipeline = lit_color_texture_program_pipeline;
+
+    Mesh const &textFace = textcube_meshes->lookup("TextFace");
+    drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
+    drawable->pipeline.type = textFace.type;
+    drawable->pipeline.start = textFace.start;
+    drawable->pipeline.count = textFace.count;
 }
 
 PlayMode::~PlayMode() = default;
@@ -256,10 +324,89 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
-    
-    scene.draw(*player.camera);
+
+
+	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+	scene.draw(*player.camera, false);
+	glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+	scene.draw(*player.camera, true);
+	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     
     terminal.draw();
     
     GL_ERRORS();
+}
+
+
+
+void PlayMode::update_wireframe(){
+    std::string name_to_add, name_to_remove;
+    std::shared_ptr<Scene::Collider> collider_to_add = nullptr;  // Add back to fully draw
+    std::shared_ptr<Scene::Collider> collider_to_remove = nullptr; // draw wireframe
+
+    // Test the frame thing?
+    if (use.downs > 0 && !use.pressed){
+        use.downs = 0;
+        auto c = scene.collider_name_map[player.name];
+        // TODO, use a interactable object list, because there is no such list, need to use two seprate loops for now
+
+        // remove object, only draw wireframe
+        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
+            auto collider = *it;
+            if(collider->name == player.name){
+                continue;
+            }
+            auto dist = c->min_distance(collider);
+            if (dist < 0.5){
+                std::string name = collider->name;
+                // If this is already a wireframe
+                if (!current_wireframe_objects_map.count(name)){
+                    collider_to_remove = collider;
+                    name_to_remove = name;
+                    use.downs = 0;
+                    break;
+                
+                }
+            }
+        }
+        if (collider_to_remove == nullptr){
+            // Add it back
+            for(auto &it : current_wireframe_objects_map){
+                std::string name = it.first;
+                auto collider = it.second;
+                auto dist = c->min_distance(collider);
+                if (dist < 0.5 && !c->intersect(collider)){
+                    collider_to_add = collider;
+                    name_to_add = name;
+                    use.downs = 0;
+                    break;
+                }
+            }
+
+        }
+
+    }
+
+    if(collider_to_add){
+        scene.colliders.push_back(collider_to_add);
+        current_wireframe_objects_map.erase(name_to_add);
+        auto d = scene.drawble_name_map[name_to_add];
+
+        // If first_time_add/remove
+        if (d->wireframe_info.one_time_change){
+            wireframe_objects.remove(collider_to_add);
+        }
+        d->wireframe_info.draw_frame = false;
+    }
+
+    if(collider_to_remove){
+        scene.colliders.remove(collider_to_remove);
+        current_wireframe_objects_map[name_to_remove] = collider_to_remove;
+        auto d = scene.drawble_name_map[name_to_remove];
+        // If first_time_add/remove
+        if (d->wireframe_info.one_time_change){
+            wireframe_objects.remove(collider_to_add);
+        }
+        d->wireframe_info.draw_frame = true;
+    }
 }

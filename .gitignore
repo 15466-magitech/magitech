@@ -1,4 +1,5 @@
 objs/
+.DS_Store
 maek-cache.json
 dist/README-SDL.txt
 dist/README-glm.txt
@@ -24,3 +25,5 @@ scenes/show-scene*
 CMakeLists.txt
 cmake-build-debug/
 .idea/
+.vscode/
+.DS_STORE

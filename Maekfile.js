@@ -157,6 +157,7 @@ const common_names = [
     maek.CPP('Load.cpp'),
     maek.CPP('ECS/Entity.cpp'),
     maek.CPP('ECS/Components/EventHandler.cpp'),
+    maek.CPP('spline.cpp'),
     maek.CPP('Terminal.cpp'),
     maek.CPP('MonospaceFont.cpp'),
     maek.CPP('TexProgram.cpp')
