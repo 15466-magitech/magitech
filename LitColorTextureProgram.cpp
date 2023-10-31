@@ -14,6 +14,7 @@ Load< LitColorTextureProgram > lit_color_texture_program(LoadTagEarly, []() -> L
 	lit_color_texture_program_pipeline.OBJECT_TO_CLIP_mat4 = ret->OBJECT_TO_CLIP_mat4;
 	lit_color_texture_program_pipeline.OBJECT_TO_LIGHT_mat4x3 = ret->OBJECT_TO_LIGHT_mat4x3;
 	lit_color_texture_program_pipeline.NORMAL_TO_LIGHT_mat3 = ret->NORMAL_TO_LIGHT_mat3;
+	lit_color_texture_program_pipeline.draw_frame = ret->draw_frame;
 
 	/* This will be used later if/when we build a light loop into the Scene:
 	lit_color_texture_program_pipeline.LIGHT_TYPE_int = ret->LIGHT_TYPE_int;
@@ -80,6 +81,7 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"in vec4 color;\n"
 		"in vec2 texCoord;\n"
 		"out vec4 fragColor;\n"
+		"uniform bool wireframe;\n"
 		"void main() {\n"
 		"	vec3 n = normalize(normal);\n"
 		"	vec3 e;\n"
@@ -103,7 +105,12 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"		e = max(0.0, dot(n,-LIGHT_DIRECTION)) * LIGHT_ENERGY;\n"
 		"	}\n"
 		"	vec4 albedo = texture(TEX, texCoord) * color;\n"
-		"	fragColor = vec4(e*albedo.rgb, albedo.a);\n"
+		"   if(wireframe){\n"
+		"   	fragColor = vec4(0.0,0.0,0.0,1.0);\n"
+		"	}\n"
+		"	else{\n"
+		"		fragColor = vec4(e*albedo.rgb, 1.0);\n"
+		"	}\n"
 		"}\n"
 	);
 	//As you can see above, adjacent strings in C/C++ are concatenated.
@@ -125,6 +132,8 @@ LitColorTextureProgram::LitColorTextureProgram() {
 	LIGHT_DIRECTION_vec3 = glGetUniformLocation(program, "LIGHT_DIRECTION");
 	LIGHT_ENERGY_vec3 = glGetUniformLocation(program, "LIGHT_ENERGY");
 	LIGHT_CUTOFF_float = glGetUniformLocation(program, "LIGHT_CUTOFF");
+
+	draw_frame = glGetUniformLocation(program,"wireframe");
 
 
 	GLuint TEX_sampler2D = glGetUniformLocation(program, "TEX");

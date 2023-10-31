@@ -50,6 +50,12 @@ struct Scene {
 	};
 
 	struct Drawable {
+		struct{
+			bool draw_frame = false;
+			bool one_time_change = false;
+		} wireframe_info;
+
+
 		//a 'Drawable' attaches attribute data to a transform:
 		Drawable(Transform *transform_) : transform(transform_) { assert(transform); }
 		Transform * transform;
@@ -69,6 +75,8 @@ struct Scene {
 			GLuint OBJECT_TO_CLIP_mat4 = -1U; //uniform location for object to clip space matrix
 			GLuint OBJECT_TO_LIGHT_mat4x3 = -1U; //uniform location for object to light space (== world space) matrix
 			GLuint NORMAL_TO_LIGHT_mat3 = -1U; //uniform location for normal to light space (== world space) matrix
+
+			GLuint draw_frame = -1U;
 
 			std::function< void() > set_uniforms; //(optional) function to set any other useful uniforms
 
@@ -116,17 +124,60 @@ struct Scene {
 		float spot_fov = glm::radians(45.0f); //spot cone fov (in radians)
 	};
 
+
+	struct Collider{
+
+		std::string name;
+
+		Collider(std::string name, glm::vec3 min, glm::vec3 max, glm::vec3 min_o, glm::vec3 max_o): min_original(min_o),max_original(max_o) {
+			this->min = min;
+			this->max = max;
+			this->name = name;
+		}
+
+		const glm::vec3 min_original = glm::vec3( std::numeric_limits< float >::infinity());
+		const glm::vec3 max_original = glm::vec3( std::numeric_limits< float >::infinity());
+
+		glm::vec3 min = glm::vec3( std::numeric_limits< float >::infinity());
+		glm::vec3 max = glm::vec3(-std::numeric_limits< float >::infinity());
+		
+		
+		bool intersect(Collider c);
+		bool intersect(std::shared_ptr<Scene::Collider> c);
+
+		bool point_intersect(glm::vec3 point);
+
+		std::vector<glm::vec3> get_vertices();
+
+		void update_BBox(Transform * t);
+
+
+		float min_distance(std::shared_ptr<Collider> c);
+
+		// Should only be called when there is a collision
+		std::pair<int, float> least_collison_axis(std::shared_ptr<Collider> c);
+
+	};
+
+
 	//Scenes, of course, may have many of the above objects:
 	std::list< Transform > transforms;
-	std::list< Drawable > drawables;
+	std::list< std::shared_ptr<Drawable>> drawables;
 	std::list< Camera > cameras;
 	std::list< Light > lights;
 
+
+	std::unordered_map<std::string, std::shared_ptr<Drawable>> drawble_name_map;
+	std::list< std::shared_ptr<Collider> > colliders;
+	std::unordered_map<std::string, std::shared_ptr<Collider>> collider_name_map;
+
+
+
 	//The "draw" function provides a convenient way to pass all the things in a scene to OpenGL:
-	void draw(Camera const &camera) const;
+	void draw(Camera const &camera, bool draw_frame = false) const;
 
 	//..sometimes, you want to draw with a custom projection matrix and/or light space:
-	void draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light = glm::mat4x3(1.0f)) const;
+	void draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light = glm::mat4x3(1.0f), bool draw_frame = false) const;
 
 	//add transforms/objects/cameras from a scene file to this scene:
 	// the 'on_drawable' callback gives your code a chance to look up mesh data and make Drawables:

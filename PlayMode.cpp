@@ -37,15 +37,15 @@ Load<Scene> phonebank_scene(LoadTagDefault, []() -> Scene const * {
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 Mesh const &mesh = phonebank_meshes->lookup(mesh_name);
                 
-                scene.drawables.emplace_back(transform);
-                Scene::Drawable &drawable = scene.drawables.back();
+                scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+                std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
                 
-                drawable.pipeline = lit_color_texture_program_pipeline;
+                drawable->pipeline = lit_color_texture_program_pipeline;
                 
-                drawable.pipeline.vao = phonebank_meshes_for_lit_color_texture_program;
-                drawable.pipeline.type = mesh.type;
-                drawable.pipeline.start = mesh.start;
-                drawable.pipeline.count = mesh.count;
+                drawable->pipeline.vao = phonebank_meshes_for_lit_color_texture_program;
+                drawable->pipeline.type = mesh.type;
+                drawable->pipeline.start = mesh.start;
+                drawable->pipeline.count = mesh.count;
                 
             });
 });
@@ -108,15 +108,15 @@ PlayMode::PlayMode() : scene(*phonebank_scene) {
     Scene::Transform *transform = player.transform;
     //transform->scale *= 2.0f;
     Mesh const &mesh = wizard_meshes->lookup("wizard");
-    scene.drawables.emplace_back(transform);
-    Scene::Drawable &drawable = scene.drawables.back();
+    scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+    std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
 
-    drawable.pipeline = lit_color_texture_program_pipeline;
+    drawable->pipeline = lit_color_texture_program_pipeline;
 
-    drawable.pipeline.vao = wizard_meshes_for_lit_color_texture_program;
-    drawable.pipeline.type = mesh.type;
-    drawable.pipeline.start = mesh.start;
-    drawable.pipeline.count = mesh.count;
+    drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
+    drawable->pipeline.type = mesh.type;
+    drawable->pipeline.start = mesh.start;
+    drawable->pipeline.count = mesh.count;
 }
 
 PlayMode::~PlayMode() = default;
@@ -298,8 +298,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
-    
-    scene.draw(*player.camera);
+
+
+	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+	scene.draw(*player.camera, false);
+	glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+	scene.draw(*player.camera, true);
+	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     
     /* In case you are wondering if your walkmesh is lining up with your scene, try:
     {
@@ -335,4 +340,78 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
                         glm::u8vec4(0xff, 0xff, 0xff, 0x00));
     }
     GL_ERRORS();
+}
+
+
+
+void PlayMode::update_wireframe(){
+    std::string name_to_add, name_to_remove;
+    std::shared_ptr<Scene::Collider> collider_to_add = nullptr;  // Add back to fully draw
+    std::shared_ptr<Scene::Collider> collider_to_remove = nullptr; // draw wireframe
+
+    // Test the frame thing?
+    if (use.downs > 0 && !use.pressed){
+        use.downs = 0;
+        auto c = scene.collider_name_map[player.name];
+        // TODO, use a interactable object list, because there is no such list, need to use two seprate loops for now
+
+        // remove object, only draw wireframe
+        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
+            auto collider = *it;
+            if(collider->name == player.name){
+                continue;
+            }
+            auto dist = c->min_distance(collider);
+            if (dist < 0.5){
+                std::string name = collider->name;
+                // If this is already a wireframe
+                if (!current_wireframe_objects_map.count(name)){
+                    collider_to_remove = collider;
+                    name_to_remove = name;
+                    use.downs = 0;
+                    break;
+                
+                }   
+            }
+        }
+        if (collider_to_remove == nullptr){
+            // Add it back
+            for(auto &it : current_wireframe_objects_map){
+                std::string name = it.first;
+                auto collider = it.second;
+                auto dist = c->min_distance(collider);
+                if (dist < 0.5 && !c->intersect(collider)){
+                    collider_to_add = collider;
+                    name_to_add = name;
+                    use.downs = 0;
+                    break;
+                }
+            }
+
+        }
+
+    }
+
+    if(collider_to_add){
+        scene.colliders.push_back(collider_to_add);
+        current_wireframe_objects_map.erase(name_to_add);
+        auto d = scene.drawble_name_map[name_to_add];
+
+        // If first_time_add/remove
+        if (d->wireframe_info.one_time_change){
+            wireframe_objects.remove(collider_to_add);
+        }
+        d->wireframe_info.draw_frame = false;
+    }
+
+    if(collider_to_remove){
+        scene.colliders.remove(collider_to_remove);
+        current_wireframe_objects_map[name_to_remove] = collider_to_remove;
+        auto d = scene.drawble_name_map[name_to_remove];
+        // If first_time_add/remove
+        if (d->wireframe_info.one_time_change){
+            wireframe_objects.remove(collider_to_add);
+        }
+        d->wireframe_info.draw_frame = true;
+    }
 }
