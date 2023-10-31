@@ -31,40 +31,62 @@ void Terminal::deactivate() {
     active = false;
 }
 
-bool Terminal::handle_key(SDL_Keycode key) {
-    if (!active) return false;
+Command Terminal::handle_key(SDL_Keycode key) {
+    if (!active) return Command::False;
     
     std::string keyname(SDL_GetKeyName(key));
     std::locale locale("C");
     if (key == SDLK_ESCAPE) {
         deactivate();
-        return true;
+        return Command::True;
     } else if (key == SDLK_BACKSPACE) {
         if (!text.empty() && !text.back().empty()) {
             text.back().pop_back();
         }
-        return true;
+        return Command::True;
     } else if (key == SDLK_RETURN) {
+        Command command = Command::True;
+        if (!text.empty()) {
+            if (text.back() == "open sesame") {
+                command = Command::OpenSesame;
+                text.emplace_back("opening...");
+                if (text.size() > rows) {
+                    text.erase(text.begin());
+                }
+            } else if (text.back() == "mirage") {
+                command = Command::Mirage;
+                text.emplace_back("activating illusion magic...");
+                if (text.size() > rows) {
+                    text.erase(text.begin());
+                }
+            } else if (!text.back().empty()) {
+                text.emplace_back("invalid command");
+                if (text.size() > rows) {
+                    text.erase(text.begin());
+                }
+            }
+        }
+        
         text.emplace_back();
         if (text.size() > rows) {
             text.erase(text.begin());
         }
-        return true;
+        return command;
     } else if (key == SDLK_SPACE) {
         char c = ' ';
         if (!text.empty() && text.back().size() < cols) {
             text.back().push_back(c);
         }
-        return true;
+        return Command::True;
     } else if (keyname.size() == 1 && std::isgraph(keyname[0], locale)) {
         char c = std::tolower(keyname[0], locale);
         if (!text.empty() && text.back().size() < cols) {
             text.back().push_back(c);
         }
-        return true;
+        return Command::True;
     }
     
-    return false;
+    return Command::False;
 }
 
 void Terminal::draw() {

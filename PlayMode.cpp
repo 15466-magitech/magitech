@@ -65,7 +65,7 @@ Load<WalkMeshes> phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
 });
 
 PlayMode::PlayMode()
-        : terminal(10, 30, glm::vec2(0, 0), glm::vec2(0.4f, 0.4f)),
+        : terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
           scene(*phonebank_scene) {
     // TODO: remove this test code
     std::cout << "Testing basic ECS mechanics..." << std::endl;
@@ -111,30 +111,30 @@ PlayMode::PlayMode()
     
     //start player walking at nearest walk point:
     player.at = walkmesh->nearest_walk_point(player.transform->position);
-
+    
     //scene.transforms.emplace_back();
     //auto transform = &scene.transforms.back();
     Scene::Transform *transform = player.transform;
     //transform->scale *= 2.0f;
     Mesh const &mesh = wizard_meshes->lookup("wizard");
-    scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+    scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
     std::shared_ptr<Scene::Drawable> drawable = scene.drawables.back();
-
+    
     drawable->pipeline = lit_color_texture_program_pipeline;
-
+    
     drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
     drawable->pipeline.type = mesh.type;
     drawable->pipeline.start = mesh.start;
     drawable->pipeline.count = mesh.count;
-
+    
     scene.transforms.emplace_back();
     transform = &scene.transforms.back();
     transform->position = glm::vec3(2.0, 2.0, 2.0);
-    scene.drawables.emplace_back( std::make_shared<Scene::Drawable>(transform));
+    scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
     drawable = scene.drawables.back();
-
+    
     drawable->pipeline = lit_color_texture_program_pipeline;
-
+    
     Mesh const &textFace = textcube_meshes->lookup("TextFace");
     drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
     drawable->pipeline.type = textFace.type;
@@ -146,7 +146,21 @@ PlayMode::~PlayMode() = default;
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
     if (evt.type == SDL_KEYDOWN) {
-        if (terminal.handle_key(evt.key.keysym.sym)) {
+        Command command = terminal.handle_key(evt.key.keysym.sym);
+        if (command != Command::False) {
+            switch (command) {
+                case Command::False:
+                    assert(false && "impossible");
+                    break;
+                case Command::True:
+                    break;
+                case Command::OpenSesame:
+                    std::cout << "command was open sesame!\n";
+                    break;
+                case Command::Mirage:
+                    std::cout << "command was open mirage!\n";
+                    break;
+            }
             return true;
         } else if (evt.key.keysym.sym == SDLK_ESCAPE) {
             SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -324,13 +338,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
-
-
-	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
-	scene.draw(*player.camera, false);
-	glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-	scene.draw(*player.camera, true);
-	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+    
+    
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    scene.draw(*player.camera, false);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    scene.draw(*player.camera, true);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     
     terminal.draw();
     
@@ -338,73 +352,72 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 }
 
 
-
-void PlayMode::update_wireframe(){
+void PlayMode::update_wireframe() {
     std::string name_to_add, name_to_remove;
     std::shared_ptr<Scene::Collider> collider_to_add = nullptr;  // Add back to fully draw
     std::shared_ptr<Scene::Collider> collider_to_remove = nullptr; // draw wireframe
-
+    
     // Test the frame thing?
-    if (use.downs > 0 && !use.pressed){
+    if (use.downs > 0 && !use.pressed) {
         use.downs = 0;
         auto c = scene.collider_name_map[player.name];
         // TODO, use a interactable object list, because there is no such list, need to use two seprate loops for now
-
+        
         // remove object, only draw wireframe
-        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it ++){
+        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it++) {
             auto collider = *it;
-            if(collider->name == player.name){
+            if (collider->name == player.name) {
                 continue;
             }
             auto dist = c->min_distance(collider);
-            if (dist < 0.5){
+            if (dist < 0.5) {
                 std::string name = collider->name;
                 // If this is already a wireframe
-                if (!current_wireframe_objects_map.count(name)){
+                if (!current_wireframe_objects_map.count(name)) {
                     collider_to_remove = collider;
                     name_to_remove = name;
                     use.downs = 0;
                     break;
-                
+                    
                 }
             }
         }
-        if (collider_to_remove == nullptr){
+        if (collider_to_remove == nullptr) {
             // Add it back
-            for(auto &it : current_wireframe_objects_map){
+            for (auto &it: current_wireframe_objects_map) {
                 std::string name = it.first;
                 auto collider = it.second;
                 auto dist = c->min_distance(collider);
-                if (dist < 0.5 && !c->intersect(collider)){
+                if (dist < 0.5 && !c->intersect(collider)) {
                     collider_to_add = collider;
                     name_to_add = name;
                     use.downs = 0;
                     break;
                 }
             }
-
+            
         }
-
+        
     }
-
-    if(collider_to_add){
+    
+    if (collider_to_add) {
         scene.colliders.push_back(collider_to_add);
         current_wireframe_objects_map.erase(name_to_add);
         auto d = scene.drawble_name_map[name_to_add];
-
+        
         // If first_time_add/remove
-        if (d->wireframe_info.one_time_change){
+        if (d->wireframe_info.one_time_change) {
             wireframe_objects.remove(collider_to_add);
         }
         d->wireframe_info.draw_frame = false;
     }
-
-    if(collider_to_remove){
+    
+    if (collider_to_remove) {
         scene.colliders.remove(collider_to_remove);
         current_wireframe_objects_map[name_to_remove] = collider_to_remove;
         auto d = scene.drawble_name_map[name_to_remove];
         // If first_time_add/remove
-        if (d->wireframe_info.one_time_change){
+        if (d->wireframe_info.one_time_change) {
             wireframe_objects.remove(collider_to_add);
         }
         d->wireframe_info.draw_frame = true;
