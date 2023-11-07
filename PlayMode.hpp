@@ -60,8 +60,14 @@ struct PlayMode : Mode {
     std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> wf_obj_pass_map;
     //std::list<std::shared_ptr<Scene::Collider>> wf_obj_block; // Normal object, blocked when it's real by bbox
     std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> wf_obj_block_map;
+
+
+    //debug
+    std::list<std::pair<glm::vec3,glm::vec3>> rays;
+    //
     
     void update_wireframe();
+    void update_wireframe(std::shared_ptr<Scene::Collider> collider);
     
     void initialize_wireframe_objects(std::string prefix);
     
@@ -74,4 +80,8 @@ struct PlayMode : Mode {
     void initialize_scene_metadata();
     
     void initialize_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
+
+
+    // Mouse-collider check return the collider and the distance pair
+    std::pair<std::shared_ptr<Scene::Collider>,float> mouse_collider_check(std::string prefix="col_");
 };
