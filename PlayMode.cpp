@@ -205,7 +205,15 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             read.pressed = true;
             return true;
         } else if (evt.key.keysym.sym == SDLK_SPACE) {
-            update_wireframe();
+            std::shared_ptr<Scene::Collider> c = nullptr;
+            float distance = 0.0;
+            std::tie(c,distance)  = mouse_collider_check();
+            if (c){
+                if(distance < 10.0f)
+                    update_wireframe(c);
+            }
+            
+            //update_wireframe();
             return true;
         }
     } else if (evt.type == SDL_KEYUP) {
@@ -414,11 +422,86 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     scene.draw(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     
+
+    // {
+    //     DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
+    //     for(auto r : rays){
+    //         lines.draw(r.first,r.second);
+    //     }
+    // }
+
+
     terminal.draw();
     
     GL_ERRORS();
 }
 
+
+void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c){
+    if (c->name.find("wire")==std::string::npos){
+        return;
+    }
+    
+    {
+        bool found = false;
+        for(auto it : wireframe_objects){
+            if (it->name == c->name){
+                found = true;
+            }
+        }
+        if(!found)
+            return; 
+    }
+    
+
+    if (!has_paint_ability){
+        if(c->name.find("Paintbrush") == std::string::npos){
+            return;
+        }
+    }
+
+    bool is_current_wireframe = scene.drawble_name_map[c->name]->wireframe_info.draw_frame;
+    auto d = scene.drawble_name_map[c->name];   
+
+    if(is_current_wireframe){
+        current_wireframe_objects_map.erase(c->name);
+        if(wf_obj_block_map.count(c->name)){
+            scene.colliders.push_back(c);
+        }else if(wf_obj_pass_map.count(c->name)){
+            scene.colliders.remove(c);
+        }else{
+            std::runtime_error("Run wireframe state");
+        }
+        // If first_time_add/remove
+        if (d->wireframe_info.one_time_change) {
+            wireframe_objects.remove(c);
+            wf_obj_block_map.erase(c->name);
+            wf_obj_pass_map.erase(c->name);
+        }
+        d->wireframe_info.draw_frame = false;
+    }else{
+        // remove bounding box
+        if (wf_obj_block_map.count(c->name)) {
+            scene.colliders.remove(c);
+        } else if (wf_obj_pass_map.count(c->name)) {
+            scene.colliders.push_back(c);
+        }
+        current_wireframe_objects_map[c->name] = c;
+
+        // If first_time_add/remove
+        if (d->wireframe_info.one_time_change) {
+            wireframe_objects.remove(c);
+            wf_obj_block_map.erase(c->name);
+            wf_obj_pass_map.erase(c->name);
+            current_wireframe_objects_map.erase(c->name);
+        }
+        d->wireframe_info.draw_frame = true;
+    }
+
+    if(c->name.find("Paintbrush")!=std::string::npos){
+        has_paint_ability = true;
+    }
+}
 
 void PlayMode::update_wireframe() {
     std::string name_to_real, name_to_wireframe;
@@ -662,4 +745,71 @@ void PlayMode::unlock(std::string prefix) {
     scene.drawble_name_map.erase(name_to_remove);
     scene.colliders.remove(collider_to_remove);
     scene.collider_name_map.erase(name_to_remove);
+}
+
+
+
+
+
+std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_collider_check(std::string prefix){
+ {
+    if (SDL_GetRelativeMouseMode() != SDL_FALSE)
+        return std::make_pair(nullptr,0);
+
+    int x,y;
+    SDL_GetMouseState(&x,&y);
+    printf("(%d,%d)\n",x,y);
+
+    y = 720 - y;
+
+    float ux = (x-640.0) / 640.0;
+    float uy = (y-360.0) / 360.0;
+
+    printf("(%.2f,%.2f)\n",ux,uy);
+
+
+    // nearest plane
+    glm::vec4 nearpoint{ux,uy,-1.0,1.0};
+
+    glm::mat4 world_to_clip = player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
+
+    glm::mat4 inv_world_to_clip = glm::inverse(world_to_clip);
+
+    glm::vec4 nearResult = inv_world_to_clip*nearpoint;
+    nearResult /= nearResult.w;
+
+    
+    auto camera_to_world = player.camera->transform->make_local_to_world();
+
+    //printf("%f %f %f",test1[3][0],test1[3][1],test1[3][2]);
+
+    glm::vec3 camera_world_location = {camera_to_world[3][0],camera_to_world[3][1],camera_to_world[3][2]};
+
+
+    Ray dir = Ray{camera_world_location, glm::vec3{nearResult.x,nearResult.y,nearResult.z} - camera_world_location};
+
+    std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
+
+    for(auto it : scene.collider_name_map){
+        auto c = it.second;
+        if (c->name.find(prefix)!=std::string::npos || c->name.find("Paintbrush")!=std::string::npos){
+            bool intersected;
+            float t;
+            std::tie(intersected,t) = c->ray_intersect(dir);
+            if(intersected){
+                if(t < dir.t){
+                    dir.t = t;
+                    intersected_collider = c;
+                }
+            }
+        }
+    }
+
+
+    float distance = glm::length(dir.d * dir.t);
+
+    
+    return std::make_pair(intersected_collider,distance);
+
+}
 }
