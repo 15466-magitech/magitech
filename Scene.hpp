@@ -10,6 +10,8 @@
  *
  */
 
+#include "ray.hpp"
+
 #include "GL.hpp"
 
 #include <glm/glm.hpp>
@@ -156,6 +158,8 @@ struct Scene {
 
 		// Should only be called when there is a collision
 		std::pair<int, float> least_collison_axis(std::shared_ptr<Collider> c);
+
+		std::pair<bool,float> ray_intersect(Ray ray);
 
 	};
 
