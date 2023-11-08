@@ -57,6 +57,11 @@ struct Scene {
 			bool one_time_change = false;
 		} wireframe_info;
 
+        struct {
+            glm::vec3 specular_brightness = glm::vec3(1.0f);
+            float shininess = 10.0f;
+        } specular_info;
+
 
 		//a 'Drawable' attaches attribute data to a transform:
 		Drawable(Transform *transform_) : transform(transform_) { assert(transform); }
@@ -77,6 +82,8 @@ struct Scene {
 			GLuint OBJECT_TO_CLIP_mat4 = -1U; //uniform location for object to clip space matrix
 			GLuint OBJECT_TO_LIGHT_mat4x3 = -1U; //uniform location for object to light space (== world space) matrix
 			GLuint NORMAL_TO_LIGHT_mat3 = -1U; //uniform location for normal to light space (== world space) matrix
+            GLuint SPECULAR_BRIGHTNESS_vec3 = -1U;
+            GLuint SPECULAR_SHININESS_float = -1U;
 
 			GLuint draw_frame = -1U;
 

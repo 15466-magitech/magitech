@@ -130,27 +130,28 @@ PlayMode::PlayMode()
     //transform->scale *= 2.0f;
     Mesh const &mesh = wizard_meshes->lookup("wizard");
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
-    std::shared_ptr<Scene::Drawable> drawable = scene.drawables.back();
+    std::shared_ptr<Scene::Drawable> wizard_drawable = scene.drawables.back();
     
-    drawable->pipeline = lit_color_texture_program_pipeline;
+    wizard_drawable->pipeline = lit_color_texture_program_pipeline;
     
-    drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
-    drawable->pipeline.type = mesh.type;
-    drawable->pipeline.start = mesh.start;
-    drawable->pipeline.count = mesh.count;
+    wizard_drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
+    wizard_drawable->pipeline.type = mesh.type;
+    wizard_drawable->pipeline.start = mesh.start;
+    wizard_drawable->pipeline.count = mesh.count;
     
     scene.transforms.emplace_back();
     transform = &scene.transforms.back();
     transform->position = glm::vec3(2.0, 2.0, 2.0);
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
-    drawable = scene.drawables.back();
+    wizard_drawable = scene.drawables.back();
     
-    drawable->pipeline = lit_color_texture_program_pipeline;
-    drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
-    drawable->pipeline.type = textFace->type;
-    drawable->pipeline.start = textFace->start;
-    drawable->pipeline.count = textFace->count;
-    
+    wizard_drawable->pipeline = lit_color_texture_program_pipeline;
+    wizard_drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
+    wizard_drawable->pipeline.type = textFace->type;
+    wizard_drawable->pipeline.start = textFace->start;
+    wizard_drawable->pipeline.count = textFace->count;
+    wizard_drawable->specular_info.shininess = 10.0f;
+    wizard_drawable->specular_info.specular_brightness = glm::vec3(1.0f, 0.9f, 0.7f);
     
     initialize_scene_metadata();
     initialize_collider("col_", artworld_meshes);
@@ -399,16 +400,17 @@ void PlayMode::update(float elapsed) {
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
     //update camera aspect ratio for drawable:
     player.camera->aspect = float(drawable_size.x) / float(drawable_size.y);
-    
+
     //set up light type and position for lit_color_texture_program:
     // TODO: consider using the Light(s) in the scene to do this
     glUseProgram(lit_color_texture_program->program);
     glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
-    glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, -1.0f)));
-    glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
+    glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
+    glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+    glUniform3fv(lit_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
     glUseProgram(0);
     
-    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+    glClearColor(0.5f, 0.7f, 0.9f, 1.0f);
     glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     

@@ -14,6 +14,8 @@ Load< LitColorTextureProgram > lit_color_texture_program(LoadTagEarly, []() -> L
 	lit_color_texture_program_pipeline.OBJECT_TO_CLIP_mat4 = ret->OBJECT_TO_CLIP_mat4;
 	lit_color_texture_program_pipeline.OBJECT_TO_LIGHT_mat4x3 = ret->OBJECT_TO_LIGHT_mat4x3;
 	lit_color_texture_program_pipeline.NORMAL_TO_LIGHT_mat3 = ret->NORMAL_TO_LIGHT_mat3;
+    lit_color_texture_program_pipeline.SPECULAR_BRIGHTNESS_vec3 = ret->SPECULAR_BRIGHTNESS_vec3;
+    lit_color_texture_program_pipeline.SPECULAR_SHININESS_float = ret->SPECULAR_SHININESS_float;
 	lit_color_texture_program_pipeline.draw_frame = ret->draw_frame;
 
 	/* This will be used later if/when we build a light loop into the Scene:
@@ -70,18 +72,29 @@ LitColorTextureProgram::LitColorTextureProgram() {
 	,
 		//fragment shader:
 		"#version 330\n"
-		"uniform sampler2D TEX;\n"
+        "uniform mat4 OBJECT_TO_CLIP;\n"
+        "uniform sampler2D TEX;\n"
 		"uniform int LIGHT_TYPE;\n"
 		"uniform vec3 LIGHT_LOCATION;\n"
 		"uniform vec3 LIGHT_DIRECTION;\n"
 		"uniform vec3 LIGHT_ENERGY;\n"
-		"uniform float LIGHT_CUTOFF;\n"
+        "uniform vec3 AMBIENT_LIGHT_ENERGY;\n"
+        "uniform float SPECULAR_SHININESS;\n"
+        "uniform vec3 SPECULAR_BRIGHTNESS;\n"
+        "uniform float LIGHT_CUTOFF;\n"
 		"in vec3 position;\n"
 		"in vec3 normal;\n"
 		"in vec4 color;\n"
 		"in vec2 texCoord;\n"
 		"out vec4 fragColor;\n"
 		"uniform bool wireframe;\n"
+        "// Code adapted from https://github.com/aehmttw/Machimania/blob/master/resources/shaders/main.frag\n"
+        "mat3 toMat3(mat4 matrix) {\n"
+        "    return mat3(matrix[0].xyz, matrix[1].xyz, matrix[2].xyz);\n"
+        "}\n"
+        "float det(mat2 matrix) {\n"
+        "    return matrix[0].x * matrix[1].y - matrix[0].y * matrix[1].x;\n"
+        "}"
 		"void main() {\n"
 		"	vec3 n = normalize(normal);\n"
 		"	vec3 e;\n"
@@ -92,7 +105,7 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"		float nl = max(0.0, dot(n, l)) / max(1.0, dis2);\n"
 		"		e = nl * LIGHT_ENERGY;\n"
 		"	} else if (LIGHT_TYPE == 1) { //hemi light \n"
-		"		e = (dot(n,-LIGHT_DIRECTION) * 0.5 + 0.5) * LIGHT_ENERGY;\n"
+		"		e = (dot(n,-LIGHT_DIRECTION) * 0.5 + 0.5) * LIGHT_ENERGY + AMBIENT_LIGHT_ENERGY;\n"
 		"	} else if (LIGHT_TYPE == 2) { //spot light \n"
 		"		vec3 l = (LIGHT_LOCATION - position);\n"
 		"		float dis2 = dot(l,l);\n"
@@ -104,6 +117,10 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"	} else { //(LIGHT_TYPE == 3) //directional light \n"
 		"		e = max(0.0, dot(n,-LIGHT_DIRECTION)) * LIGHT_ENERGY;\n"
 		"	}\n"
+        "   vec3 cam = normalize((inverse(toMat3(OBJECT_TO_CLIP)) * vec3(0, 0, 1)).xyz);\n"
+        "   vec3 h = normalize(cam + normalize(-LIGHT_DIRECTION));\n"
+        "   float specular = pow(0.5 + dot(n, h) / 2.0, SPECULAR_SHININESS);\n"
+        "   e += specular * SPECULAR_BRIGHTNESS;\n"
 		"	vec4 albedo = texture(TEX, texCoord) * color;\n"
 		"   if(wireframe){\n"
 		"   	fragColor = vec4(0.0,0.0,0.0,1.0);\n"
@@ -131,7 +148,10 @@ LitColorTextureProgram::LitColorTextureProgram() {
 	LIGHT_LOCATION_vec3 = glGetUniformLocation(program, "LIGHT_LOCATION");
 	LIGHT_DIRECTION_vec3 = glGetUniformLocation(program, "LIGHT_DIRECTION");
 	LIGHT_ENERGY_vec3 = glGetUniformLocation(program, "LIGHT_ENERGY");
-	LIGHT_CUTOFF_float = glGetUniformLocation(program, "LIGHT_CUTOFF");
+    AMBIENT_LIGHT_ENERGY_vec3 = glGetUniformLocation(program, "AMBIENT_LIGHT_ENERGY");
+    LIGHT_CUTOFF_float = glGetUniformLocation(program, "LIGHT_CUTOFF");
+    SPECULAR_BRIGHTNESS_vec3 = glGetUniformLocation(program, "SPECULAR_BRIGHTNESS");
+    SPECULAR_SHININESS_float = glGetUniformLocation(program, "SPECULAR_SHININESS");
 
 	draw_frame = glGetUniformLocation(program,"wireframe");
 

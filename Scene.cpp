@@ -143,10 +143,14 @@ void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_lig
 			glUniformMatrix3fv(pipeline.NORMAL_TO_LIGHT_mat3, 1, GL_FALSE, glm::value_ptr(normal_to_light));
 		}
 
-		//set any requested custom uniforms:
+        // Specular info
+        glUniform3fv(pipeline.SPECULAR_BRIGHTNESS_vec3, 1, glm::value_ptr(drawable->specular_info.specular_brightness));
+        glUniform1f(pipeline.SPECULAR_SHININESS_float, drawable->specular_info.shininess);
+
+        //set any requested custom uniforms:
 		if (pipeline.set_uniforms) pipeline.set_uniforms();
 
-		//set up textures:
+        //set up textures:
 		for (uint32_t i = 0; i < Drawable::Pipeline::TextureCount; ++i) {
 			if (pipeline.textures[i].texture != 0) {
 				glActiveTexture(GL_TEXTURE0 + i);

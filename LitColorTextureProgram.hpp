@@ -27,7 +27,15 @@ struct LitColorTextureProgram {
 	GLuint LIGHT_LOCATION_vec3 = -1U;
 	GLuint LIGHT_DIRECTION_vec3 = -1U;
 	GLuint LIGHT_ENERGY_vec3 = -1U;
-	GLuint LIGHT_CUTOFF_float = -1U;
+    GLuint AMBIENT_LIGHT_ENERGY_vec3 = -1U;
+    GLuint LIGHT_CUTOFF_float = -1U;
+
+    // How bright specular reflections (mirror effect of light) should be
+    GLuint SPECULAR_BRIGHTNESS_vec3 = -1U;
+    // How diffuse/concentrated light reflections should be
+    // A lower number like 1 will look more "matte metallic" with bigger reflections
+    // A higher number may look more "plasticky" or "polished"
+    GLuint SPECULAR_SHININESS_float = -1U;
 
 	//Wireframe drawing
 	GLuint draw_frame = -1U;
