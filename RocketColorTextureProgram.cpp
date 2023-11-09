@@ -131,7 +131,7 @@ RocketColorTextureProgram::RocketColorTextureProgram() {
             "	}\n"
             "   vec3 cam = normalize((inverse(toMat3(OBJECT_TO_CLIP)) * vec3(0, 0, 1)).xyz);\n"
             "   vec3 h = normalize(cam + normalize(-LIGHT_DIRECTION));\n"
-            "   float specular = pow(0.5 + dot(n, h) / 2.0, SPECULAR_SHININESS);\n"
+            "   float specular = pow(1.0 + dot(n, h) / 0.8, SPECULAR_SHININESS);\n" // changes made here
             "   e += specular * SPECULAR_BRIGHTNESS;\n"
             "	vec4 albedo = texture(TEX, texCoord) * color;\n"
             "   if(wireframe){\n"

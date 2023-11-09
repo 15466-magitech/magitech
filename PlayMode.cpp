@@ -61,9 +61,11 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
                     //drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
                     drawable->pipeline = rocket_color_texture_program_pipeline;
                     drawable->pipeline.vao = artworld_meshes_for_rocket_color_texture_program;
+                    drawable->specular_info.shininess = 10.0;
                 } else {
                     drawable->pipeline = lit_color_texture_program_pipeline;
                     drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
+                    drawable->specular_info.shininess = 10.0;
                 }
                 
                 drawable->pipeline.type = mesh.type;
