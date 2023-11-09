@@ -425,6 +425,15 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 //                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
 //    glUseProgram(0);
     
+    glUseProgram(rocket_color_texture_program->program);
+    glUniform1i(rocket_color_texture_program->LIGHT_TYPE_int, 1);
+    glUniform3fv(rocket_color_texture_program->LIGHT_DIRECTION_vec3, 1,
+                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
+    glUniform3fv(rocket_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+    glUniform3fv(rocket_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
+                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
+    glUseProgram(0);
+    
     glClearColor(0.5f, 0.7f, 0.9f, 1.0f);
     glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
