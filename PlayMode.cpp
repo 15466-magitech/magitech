@@ -811,9 +811,11 @@ void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> mes
             glm::vec3 max = mesh.max;
             auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
             auto d = scene.drawble_name_map[name];
-            collider->update_BBox(d->transform);
-            scene.text_colliders.push_back(collider);
-            scene.textcollider_name_map[name] = collider;
+            if (d) {
+                collider->update_BBox(d->transform);
+                scene.text_colliders.push_back(collider);
+                scene.textcollider_name_map[name] = collider;
+            }
         }
     }
 }
@@ -903,7 +905,6 @@ std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_text_check(std
 }
 
 std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_collider_check(std::string prefix){
- {
     if (SDL_GetRelativeMouseMode() != SDL_FALSE)
         return std::make_pair(nullptr,0);
 
@@ -949,11 +950,9 @@ std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_collider_check
             }
         }
         
-        
         float distance = glm::length(dir.d * dir.t);
-        
-        
         return std::make_pair(intersected_collider, distance);
-        
     }
+    
+    return std::make_pair(nullptr, 0.0f);
 }
