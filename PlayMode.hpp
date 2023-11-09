@@ -81,7 +81,9 @@ struct PlayMode : Mode {
     
     void initialize_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
 
+    void initialize_text_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
 
     // Mouse-collider check return the collider and the distance pair
     std::pair<std::shared_ptr<Scene::Collider>,float> mouse_collider_check(std::string prefix="col_");
+    std::pair<std::shared_ptr<Scene::Collider>,float> mouse_text_check(std::string prefix="text_");
 };

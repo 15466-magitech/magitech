@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <map>
 
 struct Scene {
 	struct Transform {
@@ -182,7 +183,8 @@ struct Scene {
 	std::list< std::shared_ptr<Collider> > colliders;
 	std::unordered_map<std::string, std::shared_ptr<Collider>> collider_name_map;
 
-
+	std::list<std::shared_ptr<Collider>> text_colliders;
+	std::map<std::string, std::shared_ptr<Collider>> textcollider_name_map;
 
 	//The "draw" function provides a convenient way to pass all the things in a scene to OpenGL:
 	void draw(Camera const &camera, bool draw_frame = false) const;

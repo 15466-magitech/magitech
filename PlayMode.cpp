@@ -46,7 +46,7 @@ Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 });
 
 Load<TextStorage> text_storage(LoadTagDefault,[]()->TextStorage const *{
-    TextStorage const *ret = new TextStorage("/home/kane/gameprogramming/clean_magitech2/texts/text_binary");
+    TextStorage const *ret = new TextStorage(data_path("text_binary"));
     return ret;
 });
 
@@ -177,6 +177,7 @@ PlayMode::PlayMode()
     initialize_scene_metadata();
     initialize_collider("col_", artworld_meshes);
     initialize_wireframe_objects("col_wire");
+    initialize_text_collider("text_",artworld_meshes);
 }
 
 PlayMode::~PlayMode() = default;
@@ -266,6 +267,18 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             }
             
             //update_wireframe();
+            return true;
+        } else if (evt.key.keysym.sym == SDLK_c){
+            std::shared_ptr<Scene::Collider> c = nullptr;
+            float distance = 0.0;
+            std::tie(c,distance)  = mouse_text_check();
+            if(c){
+                if(text_storage->object_text_map.count(c->name)){
+                    auto v = text_storage->object_text_map.at(c->name);
+                    terminal.add_text(v[0]);
+                    terminal.activate();
+                }
+            }
             return true;
         }
     } else if (evt.type == SDL_KEYUP) {
@@ -789,6 +802,23 @@ void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes) 
 }
 
 
+void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> meshes) {
+    for (auto &it: meshes->meshes) {
+        std::string name = it.first;
+        auto mesh = it.second;
+        if (name.find(prefix) != std::string::npos) {
+            glm::vec3 min = mesh.min;
+            glm::vec3 max = mesh.max;
+            auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
+            auto d = scene.drawble_name_map[name];
+            collider->update_BBox(d->transform);
+            scene.text_colliders.push_back(collider);
+            scene.textcollider_name_map[name] = collider;
+        }
+    }
+}
+
+
 // Item to unlock must be a collider
 void PlayMode::unlock(std::string prefix) {
     
@@ -818,6 +848,59 @@ void PlayMode::unlock(std::string prefix) {
 }
 
 
+std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_text_check(std::string prefix){
+    if (SDL_GetRelativeMouseMode() != SDL_FALSE)
+    return std::make_pair(nullptr,0);
+
+    int x,y;
+    SDL_GetMouseState(&x,&y);
+
+    y = 720 - y;
+
+    float ux = (x-640.0) / 640.0;
+    float uy = (y-360.0) / 360.0;
+
+
+    // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
+    glm::vec4 nearpoint{ux,uy,-1.0,1.0};
+
+    glm::mat4 world_to_clip = player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
+
+    glm::mat4 inv_world_to_clip = glm::inverse(world_to_clip);
+
+    glm::vec4 near_result = inv_world_to_clip*nearpoint;
+    near_result /= near_result.w;
+
+    // Camera world position should be obtained like this
+    auto camera_to_world = player.camera->transform->make_local_to_world();
+    glm::vec3 camera_world_location = {camera_to_world[3][0],camera_to_world[3][1],camera_to_world[3][2]};
+
+
+    Ray dir = Ray{camera_world_location, glm::vec3{near_result.x,near_result.y,near_result.z} - camera_world_location};
+
+    std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
+
+    for(auto it : scene.textcollider_name_map){
+        auto c = it.second;
+        if (c->name.find(prefix)!=std::string::npos){
+            bool intersected;
+            float t;
+            std::tie(intersected,t) = c->ray_intersect(dir);
+            if(intersected){
+                if(t < dir.t){
+                    dir.t = t;
+                    intersected_collider = c;
+                }
+            }
+        }
+    }
+
+
+    float distance = glm::length(dir.d * dir.t);
+
+    
+    return std::make_pair(intersected_collider,distance);
+}
 
 std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_collider_check(std::string prefix){
  {

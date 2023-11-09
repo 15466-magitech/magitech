@@ -117,7 +117,8 @@ let copies = [
     maek.COPY(`${NEST_LIBS}/freetype/dist/README-freetype.txt`, `dist/README-freetype.txt`),
     maek.COPY(`fonts/UFL.txt`, `dist/UFL.txt`),
     maek.COPY(`fonts/README.md`, `dist/README-fonts.txt`),
-    maek.COPY(`fonts/UbuntuMono.png`, `dist/UbuntuMono.png`)
+    maek.COPY(`fonts/UbuntuMono.png`, `dist/UbuntuMono.png`),
+    maek.COPY(`texts/text_binary`, `dist/text_binary`)
 ];
 if (maek.OS === 'windows') {
     copies.push(maek.COPY(`${NEST_LIBS}/SDL2/dist/SDL2.dll`, `dist/SDL2.dll`));

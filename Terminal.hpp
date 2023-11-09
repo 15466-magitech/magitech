@@ -50,4 +50,10 @@ struct Terminal : Entity {
      * Draw the Terminal. This should come last, after other drawing.
      */
     void draw();
+
+    /*
+     * Add some string in the terminal
+     * Need to make sure every std::string can fit in one line, there is no check in the function
+     */
+    void add_text(std::vector<std::string>);
 };
