@@ -45,7 +45,7 @@ Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     return ret;
 });
 
-Load<TextStorage> text_storage(LoadTagDefault,[]()->TextStorage const *{
+Load<TextStorage> text_storage(LoadTagDefault, []() -> TextStorage const * {
     TextStorage const *ret = new TextStorage(data_path("text_binary"));
     return ret;
 });
@@ -56,9 +56,9 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 if (mesh_name == "Player")
                     return;
-
+                
                 Mesh const &mesh = artworld_meshes->lookup(mesh_name);
-
+                
                 scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
                 std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
                 
@@ -91,6 +91,7 @@ Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * 
 
 PlayMode::PlayMode()
         : terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
+          text_display(5, 75, glm::vec2(-0.50f, -0.50f), glm::vec2(1.0f, 0.2f)),
           scene(*artworld_scene) {
     // TODO: remove this test code
     std::cout << "Testing basic ECS mechanics..." << std::endl;
@@ -152,20 +153,20 @@ PlayMode::PlayMode()
     Mesh const &mesh = wizard_meshes->lookup("wizard");
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
     std::shared_ptr<Scene::Drawable> wizard_drawable = scene.drawables.back();
-
+    
     wizard_drawable->pipeline = lit_color_texture_program_pipeline;
-
+    
     wizard_drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
     wizard_drawable->pipeline.type = mesh.type;
     wizard_drawable->pipeline.start = mesh.start;
     wizard_drawable->pipeline.count = mesh.count;
     wizard_drawable->specular_info.shininess = 10.0f;
     wizard_drawable->specular_info.specular_brightness = glm::vec3(1.0f, 0.9f, 0.7f);
-
+    
     scene.transforms.emplace_back();
     transform = &scene.transforms.back();
     transform->position = glm::vec3(2.0, 2.0, 2.0);
-
+    
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
     std::shared_ptr<Scene::Drawable> text_drawable = scene.drawables.back();
     text_drawable->pipeline = lit_color_texture_program_pipeline;
@@ -173,17 +174,20 @@ PlayMode::PlayMode()
     text_drawable->pipeline.type = textFace->type;
     text_drawable->pipeline.start = textFace->start;
     text_drawable->pipeline.count = textFace->count;
-
+    
     initialize_scene_metadata();
     initialize_collider("col_", artworld_meshes);
     initialize_wireframe_objects("col_wire");
-    initialize_text_collider("text_",artworld_meshes);
+    initialize_text_collider("text_", artworld_meshes);
 }
 
 PlayMode::~PlayMode() = default;
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
     if (evt.type == SDL_KEYDOWN) {
+        if (text_display.active) {
+            text_display.deactivate();
+        }
         Command command = terminal.handle_key(evt.key.keysym.sym);
         if (command != Command::False) {
             switch (command) {
@@ -198,30 +202,30 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                     break;
                 case Command::Mirage:
                     //activate paintbrush
-                    {
-                        std::string pb_object_name = "col_wire_off_block_Paintbrush";
-                        if(!has_paint_ability){
-                            auto pb = scene.collider_name_map[pb_object_name]; 
-
-                            float distance = pb->min_distance(scene.collider_name_map[player.name]);
-
-                            if(distance < 10){
-                                auto d = scene.drawble_name_map[pb_object_name];
-                                assert(d->wireframe_info.draw_frame);
-                                d->wireframe_info.draw_frame = false;
-                                has_paint_ability = true;
-                                scene.colliders.push_back(pb);
-                                current_wireframe_objects_map.erase(pb_object_name);
-                                if (d->wireframe_info.one_time_change) {
-                                    wireframe_objects.remove(pb);
-                                    wf_obj_block_map.erase(pb_object_name);
-                                    wf_obj_pass_map.erase(pb_object_name);
+                {
+                    std::string pb_object_name = "col_wire_off_block_Paintbrush";
+                    if (!has_paint_ability) {
+                        auto pb = scene.collider_name_map[pb_object_name];
+                        
+                        float distance = pb->min_distance(scene.collider_name_map[player.name]);
+                        
+                        if (distance < 10) {
+                            auto d = scene.drawble_name_map[pb_object_name];
+                            assert(d->wireframe_info.draw_frame);
+                            d->wireframe_info.draw_frame = false;
+                            has_paint_ability = true;
+                            scene.colliders.push_back(pb);
+                            current_wireframe_objects_map.erase(pb_object_name);
+                            if (d->wireframe_info.one_time_change) {
+                                wireframe_objects.remove(pb);
+                                wf_obj_block_map.erase(pb_object_name);
+                                wf_obj_pass_map.erase(pb_object_name);
                                 
-                                }
                             }
-                            
                         }
+                        
                     }
+                }
                     //update_wireframe();
                     std::cout << "command was open mirage!\n";
                     break;
@@ -255,8 +259,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
         } else if (evt.key.keysym.sym == SDLK_SPACE) {
             std::shared_ptr<Scene::Collider> c = nullptr;
             float distance = 0.0;
-
-            std::tie(c,distance)  = mouse_collider_check();
+            
+            std::tie(c, distance) = mouse_collider_check();
             if (c) {
                 auto player_collider = scene.collider_name_map[player.name];
                 if (distance < 10.0f) {
@@ -268,15 +272,15 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             
             //update_wireframe();
             return true;
-        } else if (evt.key.keysym.sym == SDLK_c){
+        } else if (evt.key.keysym.sym == SDLK_c) {
             std::shared_ptr<Scene::Collider> c = nullptr;
             float distance = 0.0;
-            std::tie(c,distance)  = mouse_text_check();
-            if(c){
-                if(text_storage->object_text_map.count(c->name)){
+            std::tie(c, distance) = mouse_text_check();
+            if (c) {
+                if (text_storage->object_text_map.count(c->name)) {
                     auto v = text_storage->object_text_map.at(c->name);
-                    terminal.add_text(v[0]);
-                    terminal.activate();
+                    text_display.add_text(v[0]);
+                    text_display.activate();
                 }
             }
             return true;
@@ -316,9 +320,12 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             float pitch = glm::pitch(player.camera->transform->rotation);
             pitch += motion.y * player.camera->fovy;
             //camera looks down -z (basically at the player's feet) when pitch is at zero.
-            pitch = std::min(pitch, 0.95f * 3.1415926f);
-            pitch = std::max(pitch, 0.05f * 3.1415926f);
+            pitch = std::min(pitch, 0.60f * glm::pi<glm::float32>());
+            pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
             player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+            const glm::float32 DIST_TO_PLAYER = glm::length(glm::vec3(-0.0f, -5.0f, 2.5f));
+            player.camera->transform->position =
+                    -player.camera->transform->rotation * glm::vec3(0.0f, 2.0f, DIST_TO_PLAYER);
             
             return true;
         }
@@ -509,6 +516,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     
     terminal.draw();
+    text_display.draw();
     
     GL_ERRORS();
 }
@@ -519,9 +527,9 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
     if (!has_paint_ability) {
         return;
     }
-
     
-    if (c->name.find("wire")==std::string::npos) {
+    
+    if (c->name.find("wire") == std::string::npos) {
         return;
     }
     
@@ -848,100 +856,104 @@ void PlayMode::unlock(std::string prefix) {
 }
 
 
-std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_text_check(std::string prefix){
+std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(std::string prefix) {
     if (SDL_GetRelativeMouseMode() != SDL_FALSE)
-    return std::make_pair(nullptr,0);
-
-    int x,y;
-    SDL_GetMouseState(&x,&y);
-
+        return std::make_pair(nullptr, 0);
+    
+    int x, y;
+    SDL_GetMouseState(&x, &y);
+    
     y = 720 - y;
-
-    float ux = (x-640.0) / 640.0;
-    float uy = (y-360.0) / 360.0;
-
-
+    
+    float ux = (x - 640.0) / 640.0;
+    float uy = (y - 360.0) / 360.0;
+    
+    
     // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
-    glm::vec4 nearpoint{ux,uy,-1.0,1.0};
-
-    glm::mat4 world_to_clip = player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
-
+    glm::vec4 nearpoint{ux, uy, -1.0, 1.0};
+    
+    glm::mat4 world_to_clip =
+            player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
+    
     glm::mat4 inv_world_to_clip = glm::inverse(world_to_clip);
-
-    glm::vec4 near_result = inv_world_to_clip*nearpoint;
+    
+    glm::vec4 near_result = inv_world_to_clip * nearpoint;
     near_result /= near_result.w;
-
+    
     // Camera world position should be obtained like this
     auto camera_to_world = player.camera->transform->make_local_to_world();
-    glm::vec3 camera_world_location = {camera_to_world[3][0],camera_to_world[3][1],camera_to_world[3][2]};
-
-
-    Ray dir = Ray{camera_world_location, glm::vec3{near_result.x,near_result.y,near_result.z} - camera_world_location};
-
+    glm::vec3 camera_world_location = {camera_to_world[3][0], camera_to_world[3][1], camera_to_world[3][2]};
+    
+    
+    Ray dir = Ray{camera_world_location,
+                  glm::vec3{near_result.x, near_result.y, near_result.z} - camera_world_location};
+    
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
-
-    for(auto it : scene.textcollider_name_map){
+    
+    for (auto it: scene.textcollider_name_map) {
         auto c = it.second;
-        if (c->name.find(prefix)!=std::string::npos){
+        if (c->name.find(prefix) != std::string::npos) {
             bool intersected;
             float t;
-            std::tie(intersected,t) = c->ray_intersect(dir);
-            if(intersected){
-                if(t < dir.t){
+            std::tie(intersected, t) = c->ray_intersect(dir);
+            if (intersected) {
+                if (t < dir.t) {
                     dir.t = t;
                     intersected_collider = c;
                 }
             }
         }
     }
-
-
-    float distance = glm::length(dir.d * dir.t);
-
     
-    return std::make_pair(intersected_collider,distance);
+    
+    float distance = glm::length(dir.d * dir.t);
+    
+    
+    return std::make_pair(intersected_collider, distance);
 }
 
-std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_collider_check(std::string prefix){
+std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_check(std::string prefix) {
     if (SDL_GetRelativeMouseMode() != SDL_FALSE)
-        return std::make_pair(nullptr,0);
-
-    int x,y;
-    SDL_GetMouseState(&x,&y);
-
+        return std::make_pair(nullptr, 0);
+    
+    int x, y;
+    SDL_GetMouseState(&x, &y);
+    
     y = 720 - y;
-
-    float ux = (x-640.0) / 640.0;
-    float uy = (y-360.0) / 360.0;
-
-
+    
+    float ux = (x - 640.0) / 640.0;
+    float uy = (y - 360.0) / 360.0;
+    
+    
     // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
-    glm::vec4 nearpoint{ux,uy,-1.0,1.0};
-
-    glm::mat4 world_to_clip = player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
-
+    glm::vec4 nearpoint{ux, uy, -1.0, 1.0};
+    
+    glm::mat4 world_to_clip =
+            player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
+    
     glm::mat4 inv_world_to_clip = glm::inverse(world_to_clip);
-
-    glm::vec4 near_result = inv_world_to_clip*nearpoint;
+    
+    glm::vec4 near_result = inv_world_to_clip * nearpoint;
     near_result /= near_result.w;
-
+    
     // Camera world position should be obtained like this
     auto camera_to_world = player.camera->transform->make_local_to_world();
-    glm::vec3 camera_world_location = {camera_to_world[3][0],camera_to_world[3][1],camera_to_world[3][2]};
-
-
-    Ray dir = Ray{camera_world_location, glm::vec3{near_result.x,near_result.y,near_result.z} - camera_world_location};
-
+    glm::vec3 camera_world_location = {camera_to_world[3][0], camera_to_world[3][1], camera_to_world[3][2]};
+    
+    
+    Ray dir = Ray{camera_world_location,
+                  glm::vec3{near_result.x, near_result.y, near_result.z} - camera_world_location};
+    
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
-
-    for(auto it : scene.collider_name_map){
+    
+    for (auto it: scene.collider_name_map) {
         auto c = it.second;
-        if (c->name.find(prefix)!=std::string::npos || c->name.find("Paintbrush")!=std::string::npos){
+        if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
             bool intersected;
             float t;
-            std::tie(intersected,t) = c->ray_intersect(dir);
-            if(intersected){
-                if(t < dir.t){
+            std::tie(intersected, t) = c->ray_intersect(dir);
+            if (intersected) {
+                if (t < dir.t) {
                     dir.t = t;
                     intersected_collider = c;
                 }
