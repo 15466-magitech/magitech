@@ -32,11 +32,13 @@ struct Mesh {
 struct MeshBuffer {
 	//construct from a file:
 	// note: will throw if file fails to read.
-	MeshBuffer(std::string const &filename);
+	explicit MeshBuffer(std::string const &filename);
 
 	//look up a particular mesh by name:
 	// note: will throw if mesh not found.
 	const Mesh &lookup(std::string const &name) const;
+    
+    const std::string &lookup_collection(std::string const &name) const;
 	
 	//build a vertex array object that links this vbo to attributes to a program:
 	// note: will throw if program defines attributes not contained in this buffer
@@ -49,6 +51,8 @@ struct MeshBuffer {
 
 	//used by the lookup() function:
 	std::map< std::string, Mesh > meshes;
+    
+    std::map< std::string, std::string > collection;
 
 	//These 'Attrib' structures describe the location of various attributes within the buffer (in exactly format wanted by glVertexAttribPointer). They are set when the file is loaded and are used by the "make_vao_for_program" call:
 	struct Attrib {
