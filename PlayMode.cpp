@@ -811,11 +811,9 @@ void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> mes
             glm::vec3 max = mesh.max;
             auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
             auto d = scene.drawble_name_map[name];
-            if (d) {
-                collider->update_BBox(d->transform);
-                scene.text_colliders.push_back(collider);
-                scene.textcollider_name_map[name] = collider;
-            }
+            collider->update_BBox(d->transform);
+            scene.text_colliders.push_back(collider);
+            scene.textcollider_name_map[name] = collider;
         }
     }
 }
