@@ -1,6 +1,7 @@
 #include "PlayMode.hpp"
 
 #include "LitColorTextureProgram.hpp"
+#include "RocketColorTextureProgram.hpp"
 
 #include "DrawLines.hpp"
 #include "Mesh.hpp"
@@ -19,12 +20,14 @@
 #include <random>
 
 GLuint artworld_meshes_for_lit_color_texture_program = 0;
+GLuint artworld_meshes_for_rocket_color_texture_program = 0;
 GLuint textcube_meshes_for_lit_color_texture_program = 0;
 GLuint wizard_meshes_for_lit_color_texture_program = 0;
 
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    artworld_meshes_for_rocket_color_texture_program = ret->make_vao_for_program(rocket_color_texture_program->program);
     return ret;
 });
 
@@ -51,14 +54,26 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
     return new Scene(
             data_path("artworld.scene"),
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
+                if (mesh_name == "Player")
+                    return;
+
                 Mesh const &mesh = artworld_meshes->lookup(mesh_name);
-                
+
                 scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
                 std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
                 
-                drawable->pipeline = lit_color_texture_program_pipeline;
+                if (artworld_meshes->lookup_collection(mesh_name) == "Rocket") {
+                    //drawable->pipeline = lit_color_texture_program_pipeline;
+                    //drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
+                    drawable->pipeline = rocket_color_texture_program_pipeline;
+                    drawable->pipeline.vao = artworld_meshes_for_rocket_color_texture_program;
+                    drawable->specular_info.shininess = 10.0;
+                } else {
+                    drawable->pipeline = lit_color_texture_program_pipeline;
+                    drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
+                    drawable->specular_info.shininess = 10.0;
+                }
                 
-                drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
                 drawable->pipeline.type = mesh.type;
                 drawable->pipeline.start = mesh.start;
                 drawable->pipeline.count = mesh.count;
@@ -137,28 +152,28 @@ PlayMode::PlayMode()
     Mesh const &mesh = wizard_meshes->lookup("wizard");
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
     std::shared_ptr<Scene::Drawable> wizard_drawable = scene.drawables.back();
-    
+
     wizard_drawable->pipeline = lit_color_texture_program_pipeline;
-    
+
     wizard_drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
     wizard_drawable->pipeline.type = mesh.type;
     wizard_drawable->pipeline.start = mesh.start;
     wizard_drawable->pipeline.count = mesh.count;
-    
+    wizard_drawable->specular_info.shininess = 10.0f;
+    wizard_drawable->specular_info.specular_brightness = glm::vec3(1.0f, 0.9f, 0.7f);
+
     scene.transforms.emplace_back();
     transform = &scene.transforms.back();
     transform->position = glm::vec3(2.0, 2.0, 2.0);
+
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
-    wizard_drawable = scene.drawables.back();
-    
-    wizard_drawable->pipeline = lit_color_texture_program_pipeline;
-    wizard_drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
-    wizard_drawable->pipeline.type = textFace->type;
-    wizard_drawable->pipeline.start = textFace->start;
-    wizard_drawable->pipeline.count = textFace->count;
-    wizard_drawable->specular_info.shininess = 10.0f;
-    wizard_drawable->specular_info.specular_brightness = glm::vec3(1.0f, 0.9f, 0.7f);
-    
+    std::shared_ptr<Scene::Drawable> text_drawable = scene.drawables.back();
+    text_drawable->pipeline = lit_color_texture_program_pipeline;
+    text_drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
+    text_drawable->pipeline.type = textFace->type;
+    text_drawable->pipeline.start = textFace->start;
+    text_drawable->pipeline.count = textFace->count;
+
     initialize_scene_metadata();
     initialize_collider("col_", artworld_meshes);
     initialize_wireframe_objects("col_wire");
@@ -239,12 +254,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
         } else if (evt.key.keysym.sym == SDLK_SPACE) {
             std::shared_ptr<Scene::Collider> c = nullptr;
             float distance = 0.0;
+
             std::tie(c,distance)  = mouse_collider_check();
-            if (c){
+            if (c) {
                 auto player_collider = scene.collider_name_map[player.name];
-                if(distance < 10.0f){
+                if (distance < 10.0f) {
                     // Do not update if player intersects the object
-                    if(!player_collider->intersect(c))
+                    if (!player_collider->intersect(c))
                         update_wireframe(c);
                 }
             }
@@ -435,14 +451,25 @@ void PlayMode::update(float elapsed) {
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
     //update camera aspect ratio for drawable:
     player.camera->aspect = float(drawable_size.x) / float(drawable_size.y);
-
+    
     //set up light type and position for lit_color_texture_program:
     // TODO: consider using the Light(s) in the scene to do this
-    glUseProgram(lit_color_texture_program->program);
-    glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
-    glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
-    glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
-    glUniform3fv(lit_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
+//    glUseProgram(lit_color_texture_program->program);
+//    glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+//    glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1,
+//                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
+//    glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+//    glUniform3fv(lit_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
+//                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
+//    glUseProgram(0);
+    
+    glUseProgram(rocket_color_texture_program->program);
+    glUniform1i(rocket_color_texture_program->LIGHT_TYPE_int, 1);
+    glUniform3fv(rocket_color_texture_program->LIGHT_DIRECTION_vec3, 1,
+                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
+    glUniform3fv(rocket_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+    glUniform3fv(rocket_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
+                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
     glUseProgram(0);
     
     glClearColor(0.5f, 0.7f, 0.9f, 1.0f);
@@ -459,59 +486,60 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     scene.draw(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     
-
+    
     // {
     //     DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
     //     for(auto r : rays){
     //         lines.draw(r.first,r.second);
     //     }
     // }
-
-
+    
+    
     terminal.draw();
     
     GL_ERRORS();
 }
 
+
 // TODO exclude player collider?
-void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c){
-    if (!has_paint_ability){
+void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
+    if (!has_paint_ability) {
         return;
     }
 
     
-    if (c->name.find("wire")==std::string::npos){
+    if (c->name.find("wire")==std::string::npos) {
         return;
     }
     
     {
         bool found = false;
-        for(auto it : wireframe_objects){
-            if (it->name == c->name){
+        for (auto it: wireframe_objects) {
+            if (it->name == c->name) {
                 found = true;
             }
         }
-        if(!found)
-            return; 
+        if (!found)
+            return;
     }
     
-
-    if (!has_paint_ability){
-        if(c->name.find("Paintbrush") == std::string::npos){
+    
+    if (!has_paint_ability) {
+        if (c->name.find("Paintbrush") == std::string::npos) {
             return;
         }
     }
-
+    
     bool is_current_wireframe = scene.drawble_name_map[c->name]->wireframe_info.draw_frame;
-    auto d = scene.drawble_name_map[c->name];   
-
-    if(is_current_wireframe){
+    auto d = scene.drawble_name_map[c->name];
+    
+    if (is_current_wireframe) {
         current_wireframe_objects_map.erase(c->name);
-        if(wf_obj_block_map.count(c->name)){
+        if (wf_obj_block_map.count(c->name)) {
             scene.colliders.push_back(c);
-        }else if(wf_obj_pass_map.count(c->name)){
+        } else if (wf_obj_pass_map.count(c->name)) {
             scene.colliders.remove(c);
-        }else{
+        } else {
             std::runtime_error("Run wireframe state");
         }
         // If first_time_add/remove
@@ -521,7 +549,7 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c){
             wf_obj_pass_map.erase(c->name);
         }
         d->wireframe_info.draw_frame = false;
-    }else{
+    } else {
         // remove bounding box
         if (wf_obj_block_map.count(c->name)) {
             scene.colliders.remove(c);
@@ -529,7 +557,7 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c){
             scene.colliders.push_back(c);
         }
         current_wireframe_objects_map[c->name] = c;
-
+        
         // If first_time_add/remove
         if (d->wireframe_info.one_time_change) {
             wireframe_objects.remove(c);
@@ -539,8 +567,8 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c){
         }
         d->wireframe_info.draw_frame = true;
     }
-
-    if(c->name.find("Paintbrush")!=std::string::npos){
+    
+    if (c->name.find("Paintbrush") != std::string::npos) {
         has_paint_ability = true;
     }
 }
@@ -791,8 +819,6 @@ void PlayMode::unlock(std::string prefix) {
 
 
 
-
-
 std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_collider_check(std::string prefix){
  {
     if (SDL_GetRelativeMouseMode() != SDL_FALSE)
@@ -839,13 +865,12 @@ std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_collider_check
                 }
             }
         }
+        
+        
+        float distance = glm::length(dir.d * dir.t);
+        
+        
+        return std::make_pair(intersected_collider, distance);
+        
     }
-
-
-    float distance = glm::length(dir.d * dir.t);
-
-    
-    return std::make_pair(intersected_collider,distance);
-
-}
 }
