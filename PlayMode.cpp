@@ -5,6 +5,7 @@
 #include "DrawLines.hpp"
 #include "Mesh.hpp"
 #include "Load.hpp"
+#include "TextStorage.hpp"
 #include "gl_errors.hpp"
 #include "data_path.hpp"
 #include "ECS/Entity.hpp"
@@ -38,6 +39,11 @@ Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("textcube.pnct"));
     textcube_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     textFace = &ret->lookup("TextFace");
+    return ret;
+});
+
+Load<TextStorage> text_storage(LoadTagDefault,[]()->TextStorage const *{
+    TextStorage const *ret = new TextStorage("/home/kane/gameprogramming/clean_magitech2/texts/text_binary");
     return ret;
 });
 
@@ -175,7 +181,32 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                     std::cout << "command was open sesame!\n";
                     break;
                 case Command::Mirage:
-                    update_wireframe();
+                    //activate paintbrush
+                    {
+                        std::string pb_object_name = "col_wire_off_block_Paintbrush";
+                        if(!has_paint_ability){
+                            auto pb = scene.collider_name_map[pb_object_name]; 
+
+                            float distance = pb->min_distance(scene.collider_name_map[player.name]);
+
+                            if(distance < 10){
+                                auto d = scene.drawble_name_map[pb_object_name];
+                                assert(d->wireframe_info.draw_frame);
+                                d->wireframe_info.draw_frame = false;
+                                has_paint_ability = true;
+                                scene.colliders.push_back(pb);
+                                current_wireframe_objects_map.erase(pb_object_name);
+                                if (d->wireframe_info.one_time_change) {
+                                    wireframe_objects.remove(pb);
+                                    wf_obj_block_map.erase(pb_object_name);
+                                    wf_obj_pass_map.erase(pb_object_name);
+                                
+                                }
+                            }
+                            
+                        }
+                    }
+                    //update_wireframe();
                     std::cout << "command was open mirage!\n";
                     break;
             }
@@ -210,8 +241,12 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             float distance = 0.0;
             std::tie(c,distance)  = mouse_collider_check();
             if (c){
-                if(distance < 10.0f)
-                    update_wireframe(c);
+                auto player_collider = scene.collider_name_map[player.name];
+                if(distance < 10.0f){
+                    // Do not update if player intersects the object
+                    if(!player_collider->intersect(c))
+                        update_wireframe(c);
+                }
             }
             
             //update_wireframe();
@@ -438,8 +473,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     GL_ERRORS();
 }
 
-
+// TODO exclude player collider?
 void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c){
+    if (!has_paint_ability){
+        return;
+    }
+
+    
     if (c->name.find("wire")==std::string::npos){
         return;
     }
@@ -760,35 +800,29 @@ std::pair<std::shared_ptr<Scene::Collider>,float> PlayMode::mouse_collider_check
 
     int x,y;
     SDL_GetMouseState(&x,&y);
-    printf("(%d,%d)\n",x,y);
 
     y = 720 - y;
 
     float ux = (x-640.0) / 640.0;
     float uy = (y-360.0) / 360.0;
 
-    printf("(%.2f,%.2f)\n",ux,uy);
 
-
-    // nearest plane
+    // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
     glm::vec4 nearpoint{ux,uy,-1.0,1.0};
 
     glm::mat4 world_to_clip = player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
 
     glm::mat4 inv_world_to_clip = glm::inverse(world_to_clip);
 
-    glm::vec4 nearResult = inv_world_to_clip*nearpoint;
-    nearResult /= nearResult.w;
+    glm::vec4 near_result = inv_world_to_clip*nearpoint;
+    near_result /= near_result.w;
 
-    
+    // Camera world position should be obtained like this
     auto camera_to_world = player.camera->transform->make_local_to_world();
-
-    //printf("%f %f %f",test1[3][0],test1[3][1],test1[3][2]);
-
     glm::vec3 camera_world_location = {camera_to_world[3][0],camera_to_world[3][1],camera_to_world[3][2]};
 
 
-    Ray dir = Ray{camera_world_location, glm::vec3{nearResult.x,nearResult.y,nearResult.z} - camera_world_location};
+    Ray dir = Ray{camera_world_location, glm::vec3{near_result.x,near_result.y,near_result.z} - camera_world_location};
 
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
 

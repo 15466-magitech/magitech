@@ -160,7 +160,8 @@ const common_names = [
     maek.CPP('spline.cpp'),
     maek.CPP('Terminal.cpp'),
     maek.CPP('MonospaceFont.cpp'),
-    maek.CPP('TexProgram.cpp')
+    maek.CPP('TexProgram.cpp'),
+    maek.CPP('TextStorage.cpp')
 ];
 
 const show_meshes_names = [
