@@ -282,6 +282,8 @@ void Scene::load(std::string const &filename,
 		}
 		cameras.emplace_back(hierarchy_transforms[c.transform]);
 		Camera *camera = &cameras.back();
+cams[camera->transform->name] = camera;
+std::cout << "cam " << camera->transform->name << " " << camera << std::endl;
 		camera->fovy = c.data / 180.0f * 3.1415926f; //FOV is stored in degrees; convert to radians.
 		camera->near = c.clip_near;
 		//N.b. far plane is ignored because cameras use infinite perspective matrices.
@@ -374,6 +376,7 @@ void Scene::set(Scene const &other, std::unordered_map< Transform const *, Trans
 
 	//copy other's cameras, updating transform pointers:
 	cameras = other.cameras;
+cams = other.cams;
 	for (auto &c : cameras) {
 		c.transform = transform_to_transform.at(c.transform);
 	}

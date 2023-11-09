@@ -33,6 +33,7 @@ struct PlayMode : Mode {
     } left, right, down, up, read, use;
     // camera animation
     bool animated = false;
+    float animationTime = 0.0f;
     Spline<glm::vec3> splineposition, splinerotation;
     
     //local copy of the game scene (so code can change it during gameplay):

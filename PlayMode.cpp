@@ -32,11 +32,27 @@ Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     return ret;
 });
 
+std::unordered_map<std::string, Scene::Transform *>nameToTransform;
+std::unordered_map<std::string, Mesh const *>textBearers;
+std::unordered_map<std::string, std::string>textBearerCams;
 Mesh const *textFace;
 Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("textcube.pnct"));
     textcube_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
-    textFace = &ret->lookup("TextFace");
+    for (const auto &[name, mesh] : ret->meshes) {
+      if (name.rfind("text_", 0) != std::string::npos) {
+std::cout << "Found sign: " << name << std::endl;
+        textBearers[name] = &mesh;
+        if (name.back() != 'm') {
+          std::cerr << "Sign mesh " << name << " doesn't end in m" << std::endl;
+        } else {
+          std::string camname = name;
+          camname.back() = 'c';
+          textBearerCams[name] = camname;
+        }
+      }
+    }
+    textFace = &ret->lookup("text_1m");
     return ret;
 });
 
@@ -59,6 +75,30 @@ Load<Scene> phonebank_scene(LoadTagDefault, []() -> Scene const * {
             });
 });
 
+Load<Scene> textcube_scene(LoadTagDefault, []() -> Scene const * {
+    return new Scene(
+            data_path("textcube.scene"),
+            [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
+                Mesh const &mesh = textcube_meshes->lookup(mesh_name);
+std::cout << "scene mesh name: " << mesh_name << std::endl;
+
+		if (mesh_name == "Cube") {
+			transform->position = glm::vec3(2.0, 2.0, 2.0);
+		}
+                scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
+		nameToTransform[mesh_name] = transform;
+                std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
+
+                drawable->pipeline = lit_color_texture_program_pipeline;
+
+                drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
+                drawable->pipeline.type = mesh.type;
+                drawable->pipeline.start = mesh.start;
+                drawable->pipeline.count = mesh.count;
+
+            });
+});
+
 WalkMesh const *walkmesh = nullptr;
 Load<WalkMeshes> phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
     auto *ret = new WalkMeshes(data_path("phone-bank.w"));
@@ -68,7 +108,7 @@ Load<WalkMeshes> phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
 
 PlayMode::PlayMode()
         : terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
-          scene(*phonebank_scene) {
+          scene(*textcube_scene) {
     // TODO: remove this test code
     std::cout << "Testing basic ECS mechanics..." << std::endl;
     {
@@ -102,6 +142,13 @@ PlayMode::PlayMode()
     player.camera->fovy = glm::radians(60.0f);
     player.camera->near = 0.01f;
     player.camera->transform->parent = player.transform;
+    player.camera->transform->name = "player_c";
+    scene.cams["player_c"] = player.camera;
+std::cout << "cam size: " << scene.cameras.size() << std::endl;
+Scene::Camera &cam0 = scene.cameras.front();
+auto cam0name = cam0.transform->name;
+std::cout << "cam0: " << cam0name << " " << scene.cams[cam0name] << std::endl;
+std::cout << "cams[\"player_c\"]=" << scene.cams["player_c"]->transform->name << std::endl;
     
     //default view point behind player
     player.camera->transform->position = glm::vec3(-0.0f, -5.0f, 2.5f);
@@ -235,13 +282,64 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
-    if (!animated && read.pressed) {
-      animated = true;
-      splineposition = Spline<glm::vec3>();
-      splinerotation = Spline<glm::vec3>();
-      splineposition.set(0.0f, player.camera->transform->position);
-      splineposition.set(1.0f, player.camera->transform->position);
-  
+    if (!animated && read.pressed && animationTime == 0.0) {
+      //float distance = std::numeric_limits<float>::max();
+      float distance = 5.0; // sight distance
+      auto playerToWorld = player.transform->make_local_to_world();
+      auto here = playerToWorld * glm::vec4(player.transform->position, 1.0);
+      std::string selected;
+      for (const auto &[name, mesh] : textBearers) {
+        auto there = nameToTransform[name]->make_local_to_world() * glm::vec4(nameToTransform[name]->position, 1.0);
+	float newdistance = glm::distance(here, there);
+std::cout << "distance: " << newdistance << std::endl;
+        if (newdistance < distance) {
+          distance = newdistance;
+          selected = name;
+        }
+      }
+      if (selected.size() != 0) {
+std::cout << "selected: " << selected << std::endl;
+        assert(selected.back() == 'm');
+        auto selectedCamera = selected;
+	selectedCamera.back() = 'c';
+        assert(scene.cams[selectedCamera] != nullptr);
+        animated = true;
+        animationTime = 0.0f;
+        auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
+        auto endposition = selectedToWorld * glm::vec4(scene.cams[selectedCamera]->transform->position, 1.0);
+        auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
+        //auto endrotation = nameToTransform[selected]->rotation;
+        splineposition = Spline<glm::vec3>();
+        //splinerotation = Spline<glm::vec3>();
+        splineposition.set(0.0f, startposition);
+        //splinerotation.set(0.0f, player.camera->transform->rotation);
+        splineposition.set(1.0f, endposition);
+        //splinerotation.set(1.0f, endrotation);
+        player.camera->transform->parent = nullptr;
+std::cout << "startposition " << startposition.x << " " << startposition.y << " " << startposition.z << std::endl;
+std::cout << "endposition " << endposition.x << " " << endposition.y << " " << endposition.z << std::endl;
+std::cout << "player camera to world" << std::endl;
+      } else {
+std::cout << "No readable sign in range" << std::endl;
+      }
+    }
+    // camera animation
+    if (animated) {
+      animationTime += elapsed;
+      animationTime = std::min(1.0f, animationTime);
+      player.camera->transform->position = splineposition.at(animationTime);
+      if (animationTime == 1.0f) {
+        animated = false;
+      }
+    }
+
+    if (!animated && !read.pressed && animationTime > 0.0) {
+      // reset camera
+std::cout << "reset camera" << std::endl;
+      animationTime = 0.0;
+      player.camera->transform->position = glm::vec3(-0.0f, -5.0f, 2.5f);
+      player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+      player.camera->transform->parent = player.transform;
     }
     //player walking:
     {
