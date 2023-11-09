@@ -31,6 +31,37 @@ void Terminal::deactivate() {
     active = false;
 }
 
+void Terminal::add_text(std::vector<std::string> strs){
+    std::vector<std::string> fitted_strs;
+    
+    for(auto v : strs){
+        auto v_copy = v;
+        while(v_copy.size() > cols){
+            auto loc = v_copy.rfind(" ", cols);
+
+            auto shortened_string = loc != std::string::npos ? 
+            std::string(v_copy.begin(),v_copy.begin() + loc) :
+            std::string(v_copy.begin(),v_copy.end());
+            fitted_strs.push_back(shortened_string);
+
+            v_copy = loc != std::string::npos ? 
+            std::string(v_copy.begin() + loc,v_copy.end()):
+            std::string(v_copy.end(),v_copy.end());
+        }
+
+        fitted_strs.push_back(v_copy);
+    }
+
+
+    for(auto str : fitted_strs){
+        text.push_back(str);
+    }
+
+    while(text.size() > rows){
+        text.erase(text.begin());
+    }
+}
+
 Command Terminal::handle_key(SDL_Keycode key) {
     if (!active) return Command::False;
     
