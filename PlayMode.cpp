@@ -263,7 +263,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             std::tie(c, distance) = mouse_collider_check();
             if (c) {
                 auto player_collider = scene.collider_name_map[player.name];
-                if (distance < 10.0f) {
+                if (distance < 20.0f) {
                     // Do not update if player intersects the object
                     if (!player_collider->intersect(c))
                         update_wireframe(c);
@@ -346,7 +346,7 @@ void PlayMode::update(float elapsed) {
     //player walking:
     {
         //combine inputs into a move:
-        constexpr float PlayerSpeed = 3.0f;
+        constexpr float PlayerSpeed = 5.0f;
         auto move = glm::vec2(0.0f);
         if (left.pressed && !right.pressed) move.x = -1.0f;
         if (!left.pressed && right.pressed) move.x = 1.0f;
@@ -945,6 +945,8 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
                   glm::vec3{near_result.x, near_result.y, near_result.z} - camera_world_location};
     
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
+
+    float distance = 0.0f;
     
     for (auto it: scene.collider_name_map) {
         auto c = it.second;
@@ -960,9 +962,12 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
             }
         }
         
-        float distance = glm::length(dir.d * dir.t);
-        return std::make_pair(intersected_collider, distance);
+        
+
     }
-    
-    return std::make_pair(nullptr, 0.0f);
+
+    if(intersected_collider)
+        distance = glm::length(dir.d * dir.t);
+
+    return std::make_pair(intersected_collider, distance);
 }
