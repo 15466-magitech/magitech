@@ -43,7 +43,7 @@ Load<MeshBuffer> textcube_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 });
 
 Load<TextStorage> text_storage(LoadTagDefault,[]()->TextStorage const *{
-    TextStorage const *ret = new TextStorage("/home/kane/gameprogramming/clean_magitech2/texts/text_binary");
+    TextStorage const *ret = new TextStorage(data_path("text_binary"));
     return ret;
 });
 
