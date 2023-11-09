@@ -90,14 +90,11 @@ def parse_text_file(filename : str):
 
         objects.append(new_object)
 
-
-    print("Parsing Done")
-
     return objects
 
 
 
-def write_binary(object_list : []):
+def write_binary(object_list : [], filename = None):
     names = ""
     texts = ""
 
@@ -136,8 +133,9 @@ def write_binary(object_list : []):
         metadata_list[i].text_begin = text_begin
         metadata_list[i].text_end = text_end
 
+    path = "./texts/text_binary" if filename is None else filename
 
-    with open("./texts/text_binary","wb") as f:
+    with open(path,"wb") as f:
 
 
         # Write names
@@ -165,7 +163,16 @@ def write_binary(object_list : []):
             f.write(m.text_end.to_bytes(4,sys.byteorder))
 
 
-result = parse_text_file("./texts/test.txt")
-write_binary(result)      
+# result = parse_text_file("./texts/test.txt")
+# write_binary(result)      
         
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    if(len(args)!=2):
+        print("Usage:export_text.py text.txt text_binary")
+    else:
+        result = parse_text_file(args[0])
+        write_binary(result,args[1])
+        print("Done")
 
