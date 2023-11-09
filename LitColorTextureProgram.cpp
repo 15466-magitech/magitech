@@ -2,6 +2,7 @@
 
 #include "gl_compile_program.hpp"
 #include "gl_errors.hpp"
+#include "glm/ext.hpp"
 
 Scene::Drawable::Pipeline lit_color_texture_program_pipeline;
 
@@ -17,6 +18,14 @@ Load< LitColorTextureProgram > lit_color_texture_program(LoadTagEarly, []() -> L
     lit_color_texture_program_pipeline.SPECULAR_BRIGHTNESS_vec3 = ret->SPECULAR_BRIGHTNESS_vec3;
     lit_color_texture_program_pipeline.SPECULAR_SHININESS_float = ret->SPECULAR_SHININESS_float;
 	lit_color_texture_program_pipeline.draw_frame = ret->draw_frame;
+    lit_color_texture_program_pipeline.set_uniforms = [ret]() {
+        glUniform1i(ret->LIGHT_TYPE_int, 1);
+        glUniform3fv(ret->LIGHT_DIRECTION_vec3, 1,
+                     glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
+        glUniform3fv(ret->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+        glUniform3fv(ret->AMBIENT_LIGHT_ENERGY_vec3, 1,
+                     glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
+    };
 
 	/* This will be used later if/when we build a light loop into the Scene:
 	lit_color_texture_program_pipeline.LIGHT_TYPE_int = ret->LIGHT_TYPE_int;
@@ -128,7 +137,7 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"	else{\n"
 		"		fragColor = vec4(e*albedo.rgb, 1.0);\n"
 		"	}\n"
-		"}\n"
+        "}\n"
 	);
 	//As you can see above, adjacent strings in C/C++ are concatenated.
 	// this is very useful for writing long shader programs inline.
@@ -155,8 +164,7 @@ LitColorTextureProgram::LitColorTextureProgram() {
 
 	draw_frame = glGetUniformLocation(program,"wireframe");
 
-
-	GLuint TEX_sampler2D = glGetUniformLocation(program, "TEX");
+    GLuint TEX_sampler2D = glGetUniformLocation(program, "TEX");
 
 	//set TEX to always refer to texture binding zero:
 	glUseProgram(program); //bind program -- glUniform* calls refer to this program now
