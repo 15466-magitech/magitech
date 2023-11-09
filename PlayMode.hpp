@@ -26,7 +26,7 @@ struct PlayMode : Mode {
     
     //----- game state -----
     
-    Terminal terminal;
+    Terminal terminal, text_display;
     
     //input tracking:
     struct Button {
