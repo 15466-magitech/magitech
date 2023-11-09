@@ -320,9 +320,12 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             float pitch = glm::pitch(player.camera->transform->rotation);
             pitch += motion.y * player.camera->fovy;
             //camera looks down -z (basically at the player's feet) when pitch is at zero.
-            pitch = std::min(pitch, 0.95f * 3.1415926f);
-            pitch = std::max(pitch, 0.05f * 3.1415926f);
+            pitch = std::min(pitch, 0.60f * glm::pi<glm::float32>());
+            pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
             player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+            const glm::float32 DIST_TO_PLAYER = glm::length(glm::vec3(-0.0f, -5.0f, 2.5f));
+            player.camera->transform->position =
+                    -player.camera->transform->rotation * glm::vec3(0.0f, 2.0f, DIST_TO_PLAYER);
             
             return true;
         }
