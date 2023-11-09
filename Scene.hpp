@@ -58,7 +58,7 @@ struct Scene {
 		} wireframe_info;
 
         struct {
-            glm::vec3 specular_brightness = glm::vec3(1.0f);
+            glm::vec3 specular_brightness = glm::vec3(0.0f);
             float shininess = 10.0f;
         } specular_info;
 

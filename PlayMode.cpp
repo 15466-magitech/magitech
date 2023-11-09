@@ -48,16 +48,19 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
     return new Scene(
             data_path("artworld.scene"),
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
+                if (mesh_name == "Player")
+                    return;
+
                 Mesh const &mesh = artworld_meshes->lookup(mesh_name);
-                
+
                 scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
                 std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
                 
                 if (artworld_meshes->lookup_collection(mesh_name) == "Rocket") {
-                    drawable->pipeline = lit_color_texture_program_pipeline;
-                    drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
-//                    drawable->pipeline = rocket_color_texture_program_pipeline;
-//                    drawable->pipeline.vao = artworld_meshes_for_rocket_color_texture_program;
+                    //drawable->pipeline = lit_color_texture_program_pipeline;
+                    //drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
+                    drawable->pipeline = rocket_color_texture_program_pipeline;
+                    drawable->pipeline.vao = artworld_meshes_for_rocket_color_texture_program;
                 } else {
                     drawable->pipeline = lit_color_texture_program_pipeline;
                     drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
@@ -141,28 +144,28 @@ PlayMode::PlayMode()
     Mesh const &mesh = wizard_meshes->lookup("wizard");
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
     std::shared_ptr<Scene::Drawable> wizard_drawable = scene.drawables.back();
-    
+
     wizard_drawable->pipeline = lit_color_texture_program_pipeline;
-    
+
     wizard_drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
     wizard_drawable->pipeline.type = mesh.type;
     wizard_drawable->pipeline.start = mesh.start;
     wizard_drawable->pipeline.count = mesh.count;
-    
+    wizard_drawable->specular_info.shininess = 10.0f;
+    wizard_drawable->specular_info.specular_brightness = glm::vec3(1.0f, 0.9f, 0.7f);
+
     scene.transforms.emplace_back();
     transform = &scene.transforms.back();
     transform->position = glm::vec3(2.0, 2.0, 2.0);
+
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
-    wizard_drawable = scene.drawables.back();
-    
-    wizard_drawable->pipeline = lit_color_texture_program_pipeline;
-    wizard_drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
-    wizard_drawable->pipeline.type = textFace->type;
-    wizard_drawable->pipeline.start = textFace->start;
-    wizard_drawable->pipeline.count = textFace->count;
-    wizard_drawable->specular_info.shininess = 10.0f;
-    wizard_drawable->specular_info.specular_brightness = glm::vec3(1.0f, 0.9f, 0.7f);
-    
+    std::shared_ptr<Scene::Drawable> text_drawable = scene.drawables.back();
+    text_drawable->pipeline = lit_color_texture_program_pipeline;
+    text_drawable->pipeline.vao = textcube_meshes_for_lit_color_texture_program;
+    text_drawable->pipeline.type = textFace->type;
+    text_drawable->pipeline.start = textFace->start;
+    text_drawable->pipeline.count = textFace->count;
+
     initialize_scene_metadata();
     initialize_collider("col_", artworld_meshes);
     initialize_wireframe_objects("col_wire");
@@ -413,14 +416,14 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     //set up light type and position for lit_color_texture_program:
     // TODO: consider using the Light(s) in the scene to do this
-    glUseProgram(lit_color_texture_program->program);
-    glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
-    glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1,
-                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
-    glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
-    glUniform3fv(lit_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
-                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
-    glUseProgram(0);
+//    glUseProgram(lit_color_texture_program->program);
+//    glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+//    glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1,
+//                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
+//    glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+//    glUniform3fv(lit_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
+//                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
+//    glUseProgram(0);
     
     glClearColor(0.5f, 0.7f, 0.9f, 1.0f);
     glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
