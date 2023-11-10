@@ -300,8 +300,7 @@ std::cout << "distance: " << newdistance << std::endl;
       if (selected.size() != 0) {
 std::cout << "selected: " << selected << std::endl;
         assert(selected.back() == 'm');
-        auto selectedCamera = selected;
-	selectedCamera.back() = 'c';
+        std::string selectedCamera = textBearerCams[selected];
         assert(scene.cams[selectedCamera] != nullptr);
         animated = true;
         animationTime = 0.0f;
