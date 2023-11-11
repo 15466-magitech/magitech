@@ -31,6 +31,14 @@ std::unordered_map<std::string, Mesh const *>textBearers;
 // text bearer name to camera
 std::unordered_map<std::string, std::string>textBearerCams;
 
+// c++ still sucks
+bool endsWith(const std::string& str, const std::string& suffix) {
+  if (str.length() < suffix.length()) {
+    return false;
+  }
+  return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+}
+
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
@@ -40,10 +48,10 @@ Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     for (const auto &[name, mesh] : ret->meshes) {
       if (name.rfind("text_", 0) != std::string::npos) {
 std::cout << "Found sign: " << name << std::endl;
-        textBearers[name] = &mesh;
-        if (name.back() != 'm') {
-          std::cerr << "Sign mesh " << name << " doesn't end in m" << std::endl;
+        if (!endsWith(name, "_m")) {
+          std::cerr << "Sign mesh " << name << " doesn't end in _m" << std::endl;
         } else {
+          textBearers[name] = &mesh;
           std::string camname = name;
           camname.back() = 'c';
           textBearerCams[name] = camname;
@@ -164,12 +172,7 @@ PlayMode::PlayMode()
     //start player walking at nearest walk point:
     player.at = walkmesh->nearest_walk_point(player.transform->position);
     
-    //scene.transforms.emplace_back();
-    //auto transform = &scene.transforms.back();
-    //transform->scale *= 2.0f;
-    
     Scene::Transform *transform = player.transform;
-    //transform->scale *= 2.0f;
     Mesh const &mesh = wizard_meshes->lookup("wizard");
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
     std::shared_ptr<Scene::Drawable> wizard_drawable = scene.drawables.back();
@@ -331,9 +334,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             pitch = std::min(pitch, 0.60f * glm::pi<glm::float32>());
             pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
             player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+/*
             const glm::float32 DIST_TO_PLAYER = glm::length(glm::vec3(-0.0f, -5.0f, 2.5f));
             player.camera->transform->position =
                     -player.camera->transform->rotation * glm::vec3(0.0f, 2.0f, DIST_TO_PLAYER);
+*/
             
             return true;
         }
@@ -347,13 +352,18 @@ void PlayMode::update(float elapsed) {
       //float distance = std::numeric_limits<float>::max();
       float distance = 5.0; // sight distance
       auto playerToWorld = player.transform->make_local_to_world();
-      auto here = playerToWorld * glm::vec4(player.transform->position, 1.0);
+      auto here = player.transform->position;
+std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
       std::string selected;
       for (const auto &[name, mesh] : textBearers) {
+        if (!endsWith(name, "_m")) {
+          continue;
+        }
 	auto transform = nameToTransform[name];
         auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
         float newdistance = glm::distance(here, there);
-std::cout << "distance: " << newdistance << std::endl;
+std::cout << "distance: " << newdistance << " name: " << name << std::endl;
         if (newdistance < distance) {
           distance = newdistance;
           selected = name;
@@ -369,6 +379,7 @@ std::cout << "selected: " << selected << std::endl;
         animationTime = 0.0f;
         auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
         auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
+        //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
         auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
         auto endrotation = glm::quat_cast(glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
         auto startrotation = glm::quat_cast(glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
@@ -880,6 +891,9 @@ void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> mes
             glm::vec3 max = mesh.max;
             auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
             auto d = scene.drawble_name_map[name];
+            if (d == nullptr) {
+              continue;
+            }
             collider->update_BBox(d->transform);
             scene.text_colliders.push_back(collider);
             scene.textcollider_name_map[name] = collider;
