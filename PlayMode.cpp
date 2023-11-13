@@ -411,7 +411,7 @@ std::cout << "selected: " << selected << std::endl;
     // reset camera
     if (!animated && !read.pressed && animationTime > 0.0) {
       animationTime = 0.0;
-      player.camera->transform->position = glm::vec3(-0.0f, -5.0f, 2.5f);
+      player.camera->transform->position = glm::vec3(-1.0f, -5.0f, 2.5f);
       player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
       // back to player local camera
       player.camera->transform->parent = player.transform;
