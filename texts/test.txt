@@ -2,7 +2,7 @@
 
 The sign above the town's entrance seems like it's in bad shape,
  and it may be missing some letters. It currently looks like it reads Pain Point.
-<:>text_spaceship
+<:>text_spaceship_m
 
 The door is locked, please try open sesame
 <:>text_big_bucket

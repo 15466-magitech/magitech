@@ -162,7 +162,9 @@ PlayMode::PlayMode()
     scene.cams["player_c"] = player.camera;
     
     //default view point behind player
-    player.camera->transform->position = glm::vec3(-0.0f, -5.0f, 2.5f);
+
+    // Due to the crosshair, need to move player a little left/right
+    player.camera->transform->position = glm::vec3(-1.0f, -5.0f, 2.5f);
     
     //rotate camera to something pointing in way of player
     // arcsin 0.1 ~ 6 degrees
@@ -271,7 +273,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             std::shared_ptr<Scene::Collider> c = nullptr;
             float distance = 0.0;
             
-            std::tie(c, distance) = mouse_collider_check();
+            std::tie(c, distance) = mouse_collider_check("col_",true);
             if (c) {
                 auto player_collider = scene.collider_name_map[player.name];
                 if (distance < 10.0f) {
@@ -286,7 +288,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
         } else if (evt.key.keysym.sym == SDLK_c) {
             std::shared_ptr<Scene::Collider> c = nullptr;
             float distance = 0.0;
-            std::tie(c, distance) = mouse_text_check();
+            std::tie(c, distance) = mouse_text_check("text_",true);
             if (c) {
                 if (text_storage->object_text_map.count(c->name)) {
                     auto v = text_storage->object_text_map.at(c->name);
@@ -585,6 +587,32 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     //         lines.draw(r.first,r.second);
     //     }
     // }
+
+
+    // Draw a crosshair at the center of the screen
+    {
+        glDisable(GL_DEPTH_TEST);
+        glm::vec2 center{0.0f,0.0f};
+        float aspect = float(drawable_size.x) / float(drawable_size.y);
+		DrawLines lines(glm::mat4(
+			1.0f / aspect, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		));
+
+        glm::vec2 offset(0.05f,0.05f);
+
+        glm::vec3 pv_0 = {0.0f,0.0f + offset[1],0.0f};
+        glm::vec3 pv_1 = {0.0f,0.0f - offset[1],0.0f};
+
+        glm::vec3 ph_0 = {0.0f + offset[0], 0.0f,0.0f};
+        glm::vec3 ph_1 = {0.0f - offset[1], 0.0f,0.0f};
+
+        lines.draw(pv_0,pv_1);
+        lines.draw(ph_0,ph_1);
+        glEnable(GL_DEPTH_TEST);
+    }
     
     
     terminal.draw();
@@ -931,17 +959,24 @@ void PlayMode::unlock(std::string prefix) {
 }
 
 
-std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(std::string prefix) {
-    if (SDL_GetRelativeMouseMode() != SDL_FALSE)
-        return std::make_pair(nullptr, 0);
+std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(std::string prefix, bool use_crosshair) {
+    float ux,uy;
     
-    int x, y;
-    SDL_GetMouseState(&x, &y);
-    
-    y = 720 - y;
-    
-    float ux = (x - 640.0) / 640.0;
-    float uy = (y - 360.0) / 360.0;
+    if (!use_crosshair){
+        if (SDL_GetRelativeMouseMode() != SDL_FALSE)
+            return std::make_pair(nullptr, 0);
+        
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        
+        y = 720 - y;
+        
+        ux = (x - 640.0) / 640.0;
+        uy = (y - 360.0) / 360.0;
+    }else{
+        ux = 0.0;
+        uy = 0.0;
+    }
     
     
     // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
@@ -987,17 +1022,26 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(st
     return std::make_pair(intersected_collider, distance);
 }
 
-std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_check(std::string prefix) {
-    if (SDL_GetRelativeMouseMode() != SDL_FALSE)
-        return std::make_pair(nullptr, 0);
+std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_check(std::string prefix, bool use_crosshair) {
+    float ux,uy;
     
-    int x, y;
-    SDL_GetMouseState(&x, &y);
+    if (!use_crosshair){
+        if (SDL_GetRelativeMouseMode() != SDL_FALSE)
+            return std::make_pair(nullptr, 0);
+        
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        
+        y = 720 - y;
+        
+        ux = (x - 640.0) / 640.0;
+        uy = (y - 360.0) / 360.0;
+    }else{
+        ux = 0.0;
+        uy = 0.0;
+    }
     
-    y = 720 - y;
     
-    float ux = (x - 640.0) / 640.0;
-    float uy = (y - 360.0) / 360.0;
     
     
     // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
@@ -1035,9 +1079,9 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
             }
         }
         
-        float distance = glm::length(dir.d * dir.t);
-        return std::make_pair(intersected_collider, distance);
+
     }
-    
-    return std::make_pair(nullptr, 0.0f);
+
+    float distance = glm::length(dir.d * dir.t);
+    return std::make_pair(intersected_collider, distance);
 }
