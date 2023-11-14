@@ -17,6 +17,12 @@ struct Component {
     inline static std::vector<Entity *> to_delete;
     inline static bool system_running = false;
     
+    /*
+     * Run the given function on all components in arbitrary order.
+     * Thanks to the addition of Component<T>::to_delete and Component<T>::system_running
+     * and revision of Entity code, Entity::remove_component<T>() should be fine to be called in the
+     * lambda passed to Component<T>::system(f) so long as no component is removed more than once.
+     */
     static void system(const std::function<void(T &)> &f) {
         system_running = true;
         for (auto &[_, component]: get_map()) {
