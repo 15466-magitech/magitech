@@ -25,40 +25,40 @@ GLuint textcube_meshes_for_lit_color_texture_program = 0;
 GLuint wizard_meshes_for_lit_color_texture_program = 0;
 
 // object name to transform
-std::unordered_map<std::string, Scene::Transform *>nameToTransform;
+std::unordered_map<std::string, Scene::Transform *> nameToTransform;
 // text bearer name to mesh
-std::unordered_map<std::string, Mesh const *>textBearers;
+std::unordered_map<std::string, Mesh const *> textBearers;
 // text bearer name to camera
-std::unordered_map<std::string, std::string>textBearerCams;
+std::unordered_map<std::string, std::string> textBearerCams;
 
 // c++ still sucks
-bool endsWith(const std::string& str, const std::string& suffix) {
-  if (str.length() < suffix.length()) {
-    return false;
-  }
-  return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+bool endsWith(const std::string &str, const std::string &suffix) {
+    if (str.length() < suffix.length()) {
+        return false;
+    }
+    return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
 
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     artworld_meshes_for_rocket_color_texture_program = ret->make_vao_for_program(rocket_color_texture_program->program);
-
+    
     // register text bearers and their cameras
-    for (const auto &[name, mesh] : ret->meshes) {
-      if (name.rfind("text_", 0) != std::string::npos) {
-std::cout << "Found sign: " << name << std::endl;
-        if (!endsWith(name, "_m")) {
-          std::cerr << "Sign mesh " << name << " doesn't end in _m" << std::endl;
-        } else {
-          textBearers[name] = &mesh;
-          std::string camname = name;
-          camname.back() = 'c';
-          textBearerCams[name] = camname;
+    for (const auto &[name, mesh]: ret->meshes) {
+        if (name.rfind("text_", 0) != std::string::npos) {
+            std::cout << "Found sign: " << name << std::endl;
+            if (!endsWith(name, "_m")) {
+                std::cerr << "Sign mesh " << name << " doesn't end in _m" << std::endl;
+            } else {
+                textBearers[name] = &mesh;
+                std::string camname = name;
+                camname.back() = 'c';
+                textBearerCams[name] = camname;
+            }
         }
-      }
     }
-
+    
     return ret;
 });
 
@@ -79,7 +79,7 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 // keep transforms available
                 nameToTransform[mesh_name] = transform;
-
+                
                 if (mesh_name == "Player")
                     return;
                 
@@ -122,9 +122,27 @@ PlayMode::PlayMode()
     // TODO: remove this test code
     std::cout << "Testing basic ECS mechanics..." << std::endl;
     {
-        Entity a;
-        a.add_component<EventHandler>([](const SDL_Event &evt, const glm::uvec2 &window_size) {
-            return false;
+        struct TestComponent : Component<TestComponent> {
+            std::string name;
+            
+            explicit TestComponent(std::string name) : name(name) {}
+        };
+        Entity a, b, c, d;
+        a.add_component<TestComponent>("A");
+        b.add_component<TestComponent>("B");
+        c.add_component<TestComponent>("C");
+        d.add_component<TestComponent>("D");
+        std::cout << "TestComponent A has name " << a.get_component<TestComponent>()->name << "\n";
+        TestComponent::system([&d](TestComponent &x) {
+            std::cout << "Hello from a TestComponent with name " << x.name << "!\n";
+            if (x.name == "D") {
+                std::cout << "Found a component with name D, deleting outside d...\n";
+                d.remove_component<TestComponent>();
+            }
+        });
+        c.remove_component<TestComponent>();
+        TestComponent::system([](TestComponent &x) {
+            std::cout << "Hello again from a TestComponent with name " << x.name << "!\n";
         });
     }
     std::cout << "Success!" << std::endl;
@@ -162,7 +180,7 @@ PlayMode::PlayMode()
     scene.cams["player_c"] = player.camera;
     
     //default view point behind player
-
+    
     // Due to the crosshair, need to move player a little left/right
     player.camera->transform->position = glm::vec3(-1.0f, -5.0f, 2.5f);
     
@@ -273,7 +291,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             std::shared_ptr<Scene::Collider> c = nullptr;
             float distance = 0.0;
             
-            std::tie(c, distance) = mouse_collider_check("col_",true);
+            std::tie(c, distance) = mouse_collider_check("col_", true);
             if (c) {
                 auto player_collider = scene.collider_name_map[player.name];
                 if (distance < 10.0f) {
@@ -288,7 +306,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
         } else if (evt.key.keysym.sym == SDLK_c) {
             std::shared_ptr<Scene::Collider> c = nullptr;
             float distance = 0.0;
-            std::tie(c, distance) = mouse_text_check("text_",true);
+            std::tie(c, distance) = mouse_text_check("text_", true);
             if (c) {
                 if (text_storage->object_text_map.count(c->name)) {
                     auto v = text_storage->object_text_map.at(c->name);
@@ -351,72 +369,74 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 void PlayMode::update(float elapsed) {
     if (!animated && read.pressed && animationTime == 0.0) {
-      //float distance = std::numeric_limits<float>::max();
-      float distance = 5.0; // sight distance
-      auto playerToWorld = player.transform->make_local_to_world();
-      auto here = player.transform->position;
-std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
-      std::string selected;
-      for (const auto &[name, mesh] : textBearers) {
-        if (!endsWith(name, "_m")) {
-          continue;
+        //float distance = std::numeric_limits<float>::max();
+        float distance = 5.0; // sight distance
+        auto playerToWorld = player.transform->make_local_to_world();
+        auto here = player.transform->position;
+        std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
+        std::string selected;
+        for (const auto &[name, mesh]: textBearers) {
+            if (!endsWith(name, "_m")) {
+                continue;
+            }
+            auto transform = nameToTransform[name];
+            auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+            std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
+            float newdistance = glm::distance(here, there);
+            std::cout << "distance: " << newdistance << " name: " << name << std::endl;
+            if (newdistance < distance) {
+                distance = newdistance;
+                selected = name;
+            }
         }
-	auto transform = nameToTransform[name];
-        auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
-std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
-        float newdistance = glm::distance(here, there);
-std::cout << "distance: " << newdistance << " name: " << name << std::endl;
-        if (newdistance < distance) {
-          distance = newdistance;
-          selected = name;
+        if (selected.size() != 0) {
+            std::cout << "selected: " << selected << std::endl;
+            assert(selected.back() == 'm');
+            std::string selectedCamera = textBearerCams[selected];
+            auto destCamera = scene.cams[selectedCamera];
+            assert(destCamera != nullptr);
+            animated = true;
+            animationTime = 0.0f;
+            auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
+            auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
+            //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
+            auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
+            auto endrotation = glm::quat_cast(
+                    glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
+            auto startrotation = glm::quat_cast(
+                    glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
+            splineposition = Spline<glm::vec3>();
+            splinerotation = Spline<glm::quat>();
+            splineposition.set(0.0f, startposition);
+            splinerotation.set(0.0f, startrotation);
+            splineposition.set(1.0f, endposition);
+            splinerotation.set(1.0f, endrotation);
+            // now use world camera
+            player.camera->transform->parent = nullptr;
+        } else {
+            std::cout << "No readable sign in range" << std::endl;
         }
-      }
-      if (selected.size() != 0) {
-std::cout << "selected: " << selected << std::endl;
-        assert(selected.back() == 'm');
-        std::string selectedCamera = textBearerCams[selected];
-        auto destCamera = scene.cams[selectedCamera];
-        assert(destCamera != nullptr);
-        animated = true;
-        animationTime = 0.0f;
-        auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
-        auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
-        //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
-        auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
-        auto endrotation = glm::quat_cast(glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
-        auto startrotation = glm::quat_cast(glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
-        splineposition = Spline<glm::vec3>();
-        splinerotation = Spline<glm::quat>();
-        splineposition.set(0.0f, startposition);
-        splinerotation.set(0.0f, startrotation);
-        splineposition.set(1.0f, endposition);
-        splinerotation.set(1.0f, endrotation);
-        // now use world camera
-        player.camera->transform->parent = nullptr;
-      } else {
-        std::cout << "No readable sign in range" << std::endl;
-      }
     }
     // camera animation
     if (animated) {
-      animationTime += elapsed;
-      animationTime = std::min(1.0f, animationTime);
-      player.camera->transform->position = splineposition.at(animationTime);
-      player.camera->transform->rotation = splinerotation.at(animationTime);
-      if (animationTime == 1.0f) {
-        animated = false;
-      }
+        animationTime += elapsed;
+        animationTime = std::min(1.0f, animationTime);
+        player.camera->transform->position = splineposition.at(animationTime);
+        player.camera->transform->rotation = splinerotation.at(animationTime);
+        if (animationTime == 1.0f) {
+            animated = false;
+        }
     }
-
+    
     // reset camera
     if (!animated && !read.pressed && animationTime > 0.0) {
-      animationTime = 0.0;
-      player.camera->transform->position = glm::vec3(-0.0f, -5.0f, 2.5f);
-      player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
-      // back to player local camera
-      player.camera->transform->parent = player.transform;
+        animationTime = 0.0;
+        player.camera->transform->position = glm::vec3(-0.0f, -5.0f, 2.5f);
+        player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+        // back to player local camera
+        player.camera->transform->parent = player.transform;
     }
-
+    
     //player walking:
     {
         //combine inputs into a move:
@@ -587,30 +607,30 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     //         lines.draw(r.first,r.second);
     //     }
     // }
-
-
+    
+    
     // Draw a crosshair at the center of the screen
     {
         glDisable(GL_DEPTH_TEST);
-        glm::vec2 center{0.0f,0.0f};
+//        glm::vec2 center{0.0f,0.0f};
         float aspect = float(drawable_size.x) / float(drawable_size.y);
-		DrawLines lines(glm::mat4(
-			1.0f / aspect, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-		));
-
-        glm::vec2 offset(0.05f,0.05f);
-
-        glm::vec3 pv_0 = {0.0f,0.0f + offset[1],0.0f};
-        glm::vec3 pv_1 = {0.0f,0.0f - offset[1],0.0f};
-
-        glm::vec3 ph_0 = {0.0f + offset[0], 0.0f,0.0f};
-        glm::vec3 ph_1 = {0.0f - offset[1], 0.0f,0.0f};
-
-        lines.draw(pv_0,pv_1);
-        lines.draw(ph_0,ph_1);
+        DrawLines lines(glm::mat4(
+                1.0f / aspect, 0.0f, 0.0f, 0.0f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+                0.0f, 0.0f, 0.0f, 1.0f
+        ));
+        
+        glm::vec2 offset(0.05f, 0.05f);
+        
+        glm::vec3 pv_0 = {0.0f, 0.0f + offset[1], 0.0f};
+        glm::vec3 pv_1 = {0.0f, 0.0f - offset[1], 0.0f};
+        
+        glm::vec3 ph_0 = {0.0f + offset[0], 0.0f, 0.0f};
+        glm::vec3 ph_1 = {0.0f - offset[1], 0.0f, 0.0f};
+        
+        lines.draw(pv_0, pv_1);
+        lines.draw(ph_0, ph_1);
         glEnable(GL_DEPTH_TEST);
     }
     
@@ -920,7 +940,7 @@ void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> mes
             auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
             auto d = scene.drawble_name_map[name];
             if (d == nullptr) {
-              continue;
+                continue;
             }
             collider->update_BBox(d->transform);
             scene.text_colliders.push_back(collider);
@@ -960,9 +980,9 @@ void PlayMode::unlock(std::string prefix) {
 
 
 std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(std::string prefix, bool use_crosshair) {
-    float ux,uy;
+    float ux, uy;
     
-    if (!use_crosshair){
+    if (!use_crosshair) {
         if (SDL_GetRelativeMouseMode() != SDL_FALSE)
             return std::make_pair(nullptr, 0);
         
@@ -973,7 +993,7 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(st
         
         ux = (x - 640.0) / 640.0;
         uy = (y - 360.0) / 360.0;
-    }else{
+    } else {
         ux = 0.0;
         uy = 0.0;
     }
@@ -1022,10 +1042,11 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(st
     return std::make_pair(intersected_collider, distance);
 }
 
-std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_check(std::string prefix, bool use_crosshair) {
-    float ux,uy;
+std::pair<std::shared_ptr<Scene::Collider>, float>
+PlayMode::mouse_collider_check(std::string prefix, bool use_crosshair) {
+    float ux, uy;
     
-    if (!use_crosshair){
+    if (!use_crosshair) {
         if (SDL_GetRelativeMouseMode() != SDL_FALSE)
             return std::make_pair(nullptr, 0);
         
@@ -1036,7 +1057,7 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
         
         ux = (x - 640.0) / 640.0;
         uy = (y - 360.0) / 360.0;
-    }else{
+    } else {
         ux = 0.0;
         uy = 0.0;
     }
@@ -1079,9 +1100,9 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
             }
         }
         
-
+        
     }
-
+    
     float distance = glm::length(dir.d * dir.t);
     return std::make_pair(intersected_collider, distance);
 }
