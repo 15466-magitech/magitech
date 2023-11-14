@@ -336,11 +336,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             pitch = std::min(pitch, 0.60f * glm::pi<glm::float32>());
             pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
             player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
-/*
-            const glm::float32 DIST_TO_PLAYER = glm::length(glm::vec3(-0.0f, -5.0f, 2.5f));
+
+            const glm::float32 DIST_TO_PLAYER = glm::length(glm::vec3(-1.0f, -5.0f, 2.5f));
             player.camera->transform->position =
-                    -player.camera->transform->rotation * glm::vec3(0.0f, 2.0f, DIST_TO_PLAYER);
-*/
+                    -player.camera->transform->rotation * glm::vec3(-1.0f, 2.0f, DIST_TO_PLAYER);
+
             
             return true;
         }
