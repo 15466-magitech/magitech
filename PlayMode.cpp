@@ -592,7 +592,6 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     // Draw a crosshair at the center of the screen
     {
         glDisable(GL_DEPTH_TEST);
-        glm::vec2 center{0.0f,0.0f};
         float aspect = float(drawable_size.x) / float(drawable_size.y);
 		DrawLines lines(glm::mat4(
 			1.0f / aspect, 0.0f, 0.0f, 0.0f,
