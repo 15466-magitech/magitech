@@ -30,6 +30,8 @@ struct LitColorTextureProgram {
     GLuint AMBIENT_LIGHT_ENERGY_vec3 = -1U;
     GLuint LIGHT_CUTOFF_float = -1U;
 
+    GLuint WINDOW_DIMENSIONS = -1U;
+
     // How bright specular reflections (mirror effect of light) should be
     GLuint SPECULAR_BRIGHTNESS_vec3 = -1U;
     // How diffuse/concentrated light reflections should be

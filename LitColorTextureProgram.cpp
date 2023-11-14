@@ -63,6 +63,7 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"uniform mat4 OBJECT_TO_CLIP;\n"
 		"uniform mat4x3 OBJECT_TO_LIGHT;\n"
 		"uniform mat3 NORMAL_TO_LIGHT;\n"
+        "uniform sampler2D DEPTH;\n"
 		"in vec4 Position;\n"
 		"in vec3 Normal;\n"
 		"in vec4 Color;\n"
@@ -91,7 +92,9 @@ LitColorTextureProgram::LitColorTextureProgram() {
         "uniform float SPECULAR_SHININESS;\n"
         "uniform vec3 SPECULAR_BRIGHTNESS;\n"
         "uniform float LIGHT_CUTOFF;\n"
-		"in vec3 position;\n"
+        "uniform sampler2D DEPTH;\n"
+        "uniform vec2 WINDOW_DIMENSIONS;\n"
+        "in vec3 position;\n"
 		"in vec3 normal;\n"
 		"in vec4 color;\n"
 		"in vec2 texCoord;\n"
@@ -103,7 +106,13 @@ LitColorTextureProgram::LitColorTextureProgram() {
         "}\n"
         "float det(mat2 matrix) {\n"
         "    return matrix[0].x * matrix[1].y - matrix[0].y * matrix[1].x;\n"
-        "}"
+        "}\n"
+        "float tex(float x, float y) {\n"
+        "    return pow(1.0f - texture(DEPTH, vec2(x / WINDOW_DIMENSIONS.x, y / WINDOW_DIMENSIONS.y)).x, 0.1);\n"
+        "}\n"
+        "float outlineWeight(float x, float y) {\n"
+        "    return int(abs(tex(x - 1, y) - tex(x, y)) + abs(tex(x, y - 1) - tex(x, y)) > 0.002);\n"
+        "}\n"
 		"void main() {\n"
 		"	vec3 n = normalize(normal);\n"
 		"	vec3 e;\n"
@@ -137,6 +146,15 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"	else{\n"
 		"		fragColor = vec4(e*albedo.rgb, 1.0);\n"
 		"	}\n"
+        "    \n"
+        "   float weight = 0; \n"
+        "   float kernel[] = float[25](0.0, 0.1, 0.2, 0.1, 0.0, 0.1, 0.4, 0.6, 0.4, 0.1, 0.2, 0.6, 1.0, 0.6, 0.2, 0.1, 0.4, 0.6, 0.4, 0.1, 0.0, 0.1, 0.2, 0.1, 0.0);\n"
+        "   for (int i = 0; i < 5; i++) {\n"
+        "       for (int j = 0; j < 5; j++) {\n"
+        "           weight += kernel[i * 5 + j] * outlineWeight(gl_FragCoord.x + i - 2, gl_FragCoord.y + j - 2);\n"
+        "       }\n"
+        "   }\n"
+        "   fragColor.xyz *= 1.0f - max(0.0f, weight);\n"
         "}\n"
 	);
 	//As you can see above, adjacent strings in C/C++ are concatenated.
@@ -162,14 +180,18 @@ LitColorTextureProgram::LitColorTextureProgram() {
     SPECULAR_BRIGHTNESS_vec3 = glGetUniformLocation(program, "SPECULAR_BRIGHTNESS");
     SPECULAR_SHININESS_float = glGetUniformLocation(program, "SPECULAR_SHININESS");
 
+    WINDOW_DIMENSIONS = glGetUniformLocation(program, "WINDOW_DIMENSIONS");
+
 	draw_frame = glGetUniformLocation(program,"wireframe");
 
     GLuint TEX_sampler2D = glGetUniformLocation(program, "TEX");
+    GLuint DEPTH_sampler2D = glGetUniformLocation(program, "DEPTH");
 
 	//set TEX to always refer to texture binding zero:
 	glUseProgram(program); //bind program -- glUniform* calls refer to this program now
 
 	glUniform1i(TEX_sampler2D, 0); //set TEX to sample from GL_TEXTURE0
+    glUniform1i(DEPTH_sampler2D, 1); //set DEPTH to sample from GL_TEXTURE1
 
 	glUseProgram(0); //unbind program -- glUniform* calls refer to ??? now
 }

@@ -13,7 +13,7 @@
 #include <deque>
 
 struct PlayMode : Mode {
-    PlayMode();
+    PlayMode(SDL_Window* window);
     
     ~PlayMode() override;
     
@@ -38,7 +38,11 @@ struct PlayMode : Mode {
     float animationTime = 0.0f;
     Spline<glm::vec3> splineposition;
     Spline<glm::quat> splinerotation;
-    
+
+    GLuint depth_fb;
+    GLuint depth_tex;
+
+    SDL_Window* window;
     //local copy of the game scene (so code can change it during gameplay):
     Scene scene;
     
@@ -67,6 +71,8 @@ struct PlayMode : Mode {
     //debug
     std::list<std::pair<glm::vec3,glm::vec3>> rays;
     //
+
+    void genFramebuffers();
     
     void update_wireframe();
     void update_wireframe(std::shared_ptr<Scene::Collider> collider);

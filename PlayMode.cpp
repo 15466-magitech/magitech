@@ -12,7 +12,7 @@
 #include "ECS/Entity.hpp"
 #include "ECS/Components/EventHandler.hpp"
 #include "spline.h"
-
+#include "TexProgram.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -23,6 +23,7 @@ GLuint artworld_meshes_for_lit_color_texture_program = 0;
 GLuint artworld_meshes_for_rocket_color_texture_program = 0;
 GLuint textcube_meshes_for_lit_color_texture_program = 0;
 GLuint wizard_meshes_for_lit_color_texture_program = 0;
+GLuint image_vao = 0;
 
 // object name to transform
 std::unordered_map<std::string, Scene::Transform *>nameToTransform;
@@ -115,10 +116,16 @@ Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * 
     return ret;
 });
 
-PlayMode::PlayMode()
+PlayMode::PlayMode(SDL_Window* window)
         : terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
           text_display(5, 75, glm::vec2(-0.50f, -0.50f), glm::vec2(1.0f, 0.2f)),
           scene(*artworld_scene) {
+
+    this->window = window;
+    glGenVertexArrays(1, &image_vao);
+    genFramebuffers();
+    image_vao = gen_image(glm::vec2(-1.0f, -1.0f), glm::vec2(2.0f, 2.0f), 0.0f, 0.0f, 1.0f, 1.0f);
+
     // TODO: remove this test code
     std::cout << "Testing basic ECS mechanics..." << std::endl;
     {
@@ -542,29 +549,61 @@ std::cout << "selected: " << selected << std::endl;
     down.downs = 0;
 }
 
+// Code derived from https://15466.courses.cs.cmu.edu/lesson/framebuffers
+void PlayMode::genFramebuffers() {
+    glGenFramebuffers(1, &depth_fb);
+    glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
+
+    //Allocate and bind texture to framebuffer's color attachments:
+    //allocate texture name:
+    glGenTextures(1, &depth_tex);
+    glBindTexture(GL_TEXTURE_2D, depth_tex);
+    //allocate texture memory:
+    int w, h;
+    SDL_GL_GetDrawableSize(window, &w, &h);
+    glm::uvec2 window_size = glm::uvec2(w, h);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+    //set sampling parameters for texture:
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    //attach texture to framebuffer as the first color buffer:
+    glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
     //update camera aspect ratio for drawable:
     player.camera->aspect = float(drawable_size.x) / float(drawable_size.y);
     
     //set up light type and position for lit_color_texture_program:
     // TODO: consider using the Light(s) in the scene to do this
-//    glUseProgram(lit_color_texture_program->program);
-//    glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
-//    glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1,
+    glUseProgram(lit_color_texture_program->program);
+    glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+    glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1,
+                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
+    glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+    glUniform3fv(lit_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
+                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
+
+    int w, h;
+    SDL_GL_GetDrawableSize(window, &w, &h);
+    glm::vec2 window_size = glm::vec2(w, h);
+    glUniform2fv(lit_color_texture_program->WINDOW_DIMENSIONS, 1, glm::value_ptr(window_size));
+    glUseProgram(0);
+    
+//    glUseProgram(rocket_color_texture_program->program);
+//    glUniform1i(rocket_color_texture_program->LIGHT_TYPE_int, 1);
+//    glUniform3fv(rocket_color_texture_program->LIGHT_DIRECTION_vec3, 1,
 //                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
-//    glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
-//    glUniform3fv(lit_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
+//    glUniform3fv(rocket_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+//    glUniform3fv(rocket_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
 //                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
 //    glUseProgram(0);
-    
-    glUseProgram(rocket_color_texture_program->program);
-    glUniform1i(rocket_color_texture_program->LIGHT_TYPE_int, 1);
-    glUniform3fv(rocket_color_texture_program->LIGHT_DIRECTION_vec3, 1,
-                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
-    glUniform3fv(rocket_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
-    glUniform3fv(rocket_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
-                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
-    glUseProgram(0);
     
     glClearColor(0.5f, 0.7f, 0.9f, 1.0f);
     glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
@@ -572,15 +611,26 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
-    
-    
+
+    glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
+    glClear(GL_DEPTH_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     scene.draw(*player.camera, false);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     scene.draw(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    
-    
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, depth_tex);
+    glActiveTexture(GL_TEXTURE0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    scene.draw(*player.camera, false);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    scene.draw(*player.camera, true);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
     // {
     //     DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
     //     for(auto r : rays){
@@ -592,7 +642,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     // Draw a crosshair at the center of the screen
     {
         glDisable(GL_DEPTH_TEST);
-        glm::vec2 center{0.0f,0.0f};
+        //glm::vec2 center{0.0f,0.0f};
         float aspect = float(drawable_size.x) / float(drawable_size.y);
 		DrawLines lines(glm::mat4(
 			1.0f / aspect, 0.0f, 0.0f, 0.0f,
@@ -617,7 +667,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     terminal.draw();
     text_display.draw();
-    
+
+    //draw_image(image_vao, depth_tex, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.4f, 0.4f, 0.2f, 0.2f);
+
     GL_ERRORS();
 }
 
@@ -1042,8 +1094,8 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
     }
     
     
-    
-    
+
+
     // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
     glm::vec4 nearpoint{ux, uy, -1.0, 1.0};
     
