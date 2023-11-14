@@ -178,6 +178,8 @@ struct Scene {
 	std::list< Camera > cameras;
 	std::list< Light > lights;
 
+        // camera name to camera
+        std::unordered_map<std::string, Camera *> cams;
 
 	std::unordered_map<std::string, std::shared_ptr<Drawable>> drawble_name_map;
 	std::list< std::shared_ptr<Collider> > colliders;

@@ -2,6 +2,27 @@
 
 The sign above the town's entrance seems like it's in bad shape,
  and it may be missing some letters. It currently looks like it reads Pain Point.
-<:>text_spaceship
+<:>text_spaceship_m
 
 The door is locked, please try open sesame
+<:>text_big_bucket
+
+The artist made this world, then left.
+<:>text_easel
+
+This painting is missing its purple tones.
+<:>text_bridge
+
+The water here doesn't look real - it's an illusion. An illusion of water...
+<:>text_white_house
+
+The artist made the bridge a long time ago. We don't know why that sign's there, but maybe it has to do with the paintbrush.
+<:>text_platform
+
+You won!
+<:>text_small_bucket
+
+There's something up there...
+<:>text_corner
+
+(You can tell there was writing on this sign, but it's unintelligible now.)

@@ -79,7 +79,7 @@ if (maek.OS === "windows") {
     );
 } else if (maek.OS === "macos") {
     maek.options.CPPFlags.push(
-        `-O2`, //optimize
+        `-g`, //optimize
         //include paths for nest libraries:
         `-I${NEST_LIBS}/SDL2/include/SDL2`, `-D_THREAD_SAFE`, //the output of sdl-config --cflags
         `-I${NEST_LIBS}/glm/include`, '-Wno-deprecated-declarations', //because of vsprintf in string_cast
