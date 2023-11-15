@@ -210,14 +210,15 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                 case Command::True:
                     break;
                 case Command::OpenSesame:
-                    unlock("unlock_");
+                    //unlock("unlock_");
+                    player.has_unlock_ability = true;
                     std::cout << "command was open sesame!\n";
                     break;
                 case Command::Mirage:
                     //activate paintbrush
                 {
                     std::string pb_object_name = "col_wire_off_block_Paintbrush";
-                    if (!has_paint_ability) {
+                    if (!player.has_paint_ability) {
                         auto pb = scene.collider_name_map[pb_object_name];
                         
                         float distance = pb->min_distance(scene.collider_name_map[player.name]);
@@ -226,7 +227,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                             auto d = scene.drawble_name_map[pb_object_name];
                             assert(d->wireframe_info.draw_frame);
                             d->wireframe_info.draw_frame = false;
-                            has_paint_ability = true;
+                            player.has_paint_ability = true;
                             scene.colliders.push_back(pb);
                             current_wireframe_objects_map.erase(pb_object_name);
                             if (d->wireframe_info.one_time_change) {
@@ -275,12 +276,42 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             
             std::tie(c, distance) = mouse_collider_check("col_",true);
             if (c) {
-                auto player_collider = scene.collider_name_map[player.name];
-                if (distance < 10.0f) {
-                    // Do not update if player intersects the object
-                    if (!player_collider->intersect(c))
-                        update_wireframe(c);
+                auto type = check_collider_type(c);
+                switch (type)
+                {
+                case WIREFRAME:{
+                    auto player_collider = scene.collider_name_map[player.name];
+                    if (distance < 10.0f) {
+                        // Do not update if player intersects the object
+                        if (!player_collider->intersect(c))
+                            update_wireframe(c);
+                    }
+                    break;
                 }
+
+                case DOOR:{
+                    if(player.has_unlock_ability){
+                        auto player_collider = scene.collider_name_map[player.name];
+                        if (distance < 10.0f) {
+                            // Remove it from drawables and collider datastructure
+                            auto d = scene.drawble_name_map[c->name];
+                            scene.drawables.remove(d);
+                            scene.drawble_name_map.erase(c->name);
+                            scene.colliders.remove(c);
+                            scene.collider_name_map.erase(c->name);
+                            break;
+                        }               
+                    }
+                    
+                }
+                case FOOD:
+                    break;
+                default:
+                    break;
+                }
+
+
+
             }
             
             //update_wireframe();
@@ -623,7 +654,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 // TODO exclude player collider?
 void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
-    if (!has_paint_ability) {
+    if (!player.has_paint_ability) {
         return;
     }
     
@@ -644,7 +675,7 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
     }
     
     
-    if (!has_paint_ability) {
+    if (!player.has_paint_ability) {
         if (c->name.find("Paintbrush") == std::string::npos) {
             return;
         }
@@ -689,7 +720,7 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
     }
     
     if (c->name.find("Paintbrush") != std::string::npos) {
-        has_paint_ability = true;
+        player.has_paint_ability = true;
     }
 }
 
@@ -702,7 +733,7 @@ void PlayMode::update_wireframe() {
     
     auto c = scene.collider_name_map[player.name];
     
-    if (has_paint_ability) {
+    if (player.has_paint_ability) {
         // remove real object, only draw wireframe
         for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it++) {
             auto collider = *it;
@@ -749,7 +780,7 @@ void PlayMode::update_wireframe() {
                 if (!current_wireframe_objects_map.count(name)) {
                     collider_to_wireframe = collider;
                     name_to_wireframe = name;
-                    has_paint_ability = true;
+                    player.has_paint_ability = true;
                     break;
                     
                 }
@@ -768,7 +799,7 @@ void PlayMode::update_wireframe() {
                 if (dist < 0.5 && !c->intersect(collider)) {
                     collider_to_real = collider;
                     name_to_real = name;
-                    has_paint_ability = true;
+                    player.has_paint_ability = true;
                     break;
                 }
             }
@@ -1083,4 +1114,29 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
 
     float distance = glm::length(dir.d * dir.t);
     return std::make_pair(intersected_collider, distance);
+}
+
+
+
+ColliderType PlayMode::check_collider_type(std::shared_ptr<Scene::Collider> c){
+    if(!c){
+        std::runtime_error("NULL pointer");
+        return UNKNOWN;
+    }
+    else{
+        std::string name = c->name;
+
+        if(name.find("col_wire")!=std::string::npos){
+            return WIREFRAME;
+        }else if (name.find("col_unlock")!=std::string::npos){
+            return DOOR;
+        }else if (name.find("col_food")!=std::string::npos){
+            return FOOD;
+        }else{
+            std::runtime_error("Unkonwn collider type");
+            return UNKNOWN;
+        }
+
+    }
+
 }
