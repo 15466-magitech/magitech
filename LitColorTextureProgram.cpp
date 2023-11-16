@@ -22,9 +22,9 @@ Load< LitColorTextureProgram > lit_color_texture_program(LoadTagEarly, []() -> L
         glUniform1i(ret->LIGHT_TYPE_int, 1);
         glUniform3fv(ret->LIGHT_DIRECTION_vec3, 1,
                      glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
-        glUniform3fv(ret->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
+        glUniform3fv(ret->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.6f, 0.7f, 0.85f)));
         glUniform3fv(ret->AMBIENT_LIGHT_ENERGY_vec3, 1,
-                     glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
+                     glm::value_ptr(glm::vec3(0.5f, 0.4f, 0.25f)));
     };
 
 	/* This will be used later if/when we build a light loop into the Scene:
@@ -113,6 +113,15 @@ LitColorTextureProgram::LitColorTextureProgram() {
         "float outlineWeight(float x, float y) {\n"
         "    return int(abs(tex(x - 1, y) - tex(x, y)) + abs(tex(x, y - 1) - tex(x, y)) > 0.002);\n"
         "}\n"
+        "float pixelShade(float x, float y, float shade) {\n"
+        "   float bsize = 0.75;\n"
+        "   int bracket = int(shade / bsize);\n"
+        "   float frac = (shade - bracket * bsize) / bsize;\n"
+        "   float res = 10.0;\n"
+        "   float r = float((int(x) * 6833 + int(y) * 4643) % 7477) / 7477.0 / res;\n"
+        "   float b = r + abs(x / res - float(int(x / res)) - 0.5) + abs(y / res - float(int(y / res)) - 0.5);\n"
+        "   return (int(frac / 2.0 >= pow(b, 1) || frac / 2.0 >= pow(1 - b, 1)) + bracket) * bsize;\n"
+        "}\n"
 		"void main() {\n"
 		"	vec3 n = normalize(normal);\n"
 		"	vec3 e;\n"
@@ -123,7 +132,8 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"		float nl = max(0.0, dot(n, l)) / max(1.0, dis2);\n"
 		"		e = nl * LIGHT_ENERGY;\n"
 		"	} else if (LIGHT_TYPE == 1) { //hemi light \n"
-		"		e = (dot(n,-LIGHT_DIRECTION) * 0.5 + 0.5) * LIGHT_ENERGY + AMBIENT_LIGHT_ENERGY;\n"
+        "       float b = float(pixelShade(gl_FragCoord.x, gl_FragCoord.y, (dot(n,-LIGHT_DIRECTION) * 0.5 + 0.5)));\n"
+		"		e = b * LIGHT_ENERGY + AMBIENT_LIGHT_ENERGY;\n"
 		"	} else if (LIGHT_TYPE == 2) { //spot light \n"
 		"		vec3 l = (LIGHT_LOCATION - position);\n"
 		"		float dis2 = dot(l,l);\n"
