@@ -23,7 +23,7 @@ WalkMesh::WalkMesh(std::vector<glm::vec3> const &vertices_, std::vector<glm::vec
                    std::vector<glm::uvec3> const &triangles_)
         : vertices(vertices_), normals(normals_), triangles(triangles_) {
     
-    //construct next_vertex map (maps each edge to the next vertex in the triangle):
+    //construct next_vertex map (maps each edge toth the next vertex in the triangle):
     next_vertex.reserve(triangles.size() * 3);
     auto do_next = [this](uint32_t a, uint32_t b, uint32_t c) {
         auto ret = next_vertex.insert(std::make_pair(glm::uvec2(a, b), c));
