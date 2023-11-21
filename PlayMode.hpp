@@ -20,6 +20,13 @@ typedef enum{
     UNKNOWN
 } ColliderType;
 
+typedef enum {
+  NO = 0,
+  TO = 1,
+  THERE = 2,
+  FROM = 3,
+} animation_t;
+
 struct PlayMode : Mode {
     PlayMode();
     
@@ -42,7 +49,7 @@ struct PlayMode : Mode {
         uint8_t pressed = 0;
     } left, right, down, up, read;
     // camera animation
-    bool animated = false;
+    animation_t animated = NO;
     float animationTime = 0.0f;
     Spline<glm::vec3> splineposition;
     Spline<glm::quat> splinerotation;

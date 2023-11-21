@@ -375,7 +375,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
-    if (!animated && read.pressed && animationTime == 0.0) {
+    if (animated == NO && read.pressed && animationTime == 0.0) {
       //float distance = std::numeric_limits<float>::max();
       float distance = player.SIGHT_DISTANCE; // can see this far
       auto playerToWorld = player.transform->make_local_to_world();
@@ -406,7 +406,7 @@ std::cout << "selected: " << selected << std::endl;
         std::string selectedCamera = textBearerCams[selected];
         auto destCamera = scene.cams[selectedCamera];
         assert(destCamera != nullptr);
-        animated = true;
+        animated = TO;
         animationTime = 0.0f;
         auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
         //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
@@ -425,22 +425,35 @@ std::cout << "selected: " << selected << std::endl;
       }
     }
     // camera animation
-    if (animated) {
+    if (animated == TO || animated == FROM) {
       animationTime += elapsed;
       animationTime = std::min(1.0f, animationTime);
       player.camera->transform->position = splineposition.at(animationTime);
       player.camera->transform->rotation = splinerotation.at(animationTime);
       if (animationTime == 1.0f) {
-        animated = false;
+        animationTime = 0.0f;
+        if (animated == TO) {
+std::cout << "arrived" << std::endl;
+          animated = THERE;
+        } else {
+          animated = NO;
+          // back to player local camera
+          player.camera->transform->position = player.defaultCameraPosition;
+          player.camera->transform->rotation = player.defaultCameraRotation;
+          player.camera->transform->parent = player.transform;
+        }
       }
     }
     // reset camera
-    if (!animated && !read.pressed && animationTime > 0.0) {
+    if (animated == THERE && !read.pressed) {
+std::cout << "there" << std::endl;
+      animated = FROM;
       animationTime = 0.0;
-      player.camera->transform->position = player.defaultCameraPosition;
-      player.camera->transform->rotation = player.defaultCameraRotation;
-      // back to player local camera
-      player.camera->transform->parent = player.transform;
+      auto playerToWorld = player.transform->make_local_to_world();
+      splineposition.set(0.0f, player.camera->transform->position);
+      splinerotation.set(0.0f, player.camera->transform->rotation);
+      splineposition.set(1.0f, playerToWorld * glm::vec4(player.defaultCameraPosition, 1.0f));
+      splinerotation.set(1.0f, glm::quat(glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
     }
 
     //player walking:
