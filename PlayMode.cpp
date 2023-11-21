@@ -398,7 +398,9 @@ std::cout << "distance: " << newdistance << " name: " << name << std::endl;
           selected = name;
         }
       }
-      if (selected.size() != 0) {
+      if (selected.size() == 0) {
+        std::cout << "No readable sign in range" << std::endl;
+      } else {
 std::cout << "selected: " << selected << std::endl;
         assert(selected.back() == 'm');
         std::string selectedCamera = textBearerCams[selected];
@@ -420,8 +422,6 @@ std::cout << "selected: " << selected << std::endl;
         splinerotation.set(1.0f, endrotation);
         // now use world camera
         player.camera->transform->parent = nullptr;
-      } else {
-        std::cout << "No readable sign in range" << std::endl;
       }
     }
     // camera animation
@@ -434,7 +434,6 @@ std::cout << "selected: " << selected << std::endl;
         animated = false;
       }
     }
-
     // reset camera
     if (!animated && !read.pressed && animationTime > 0.0) {
       animationTime = 0.0;
