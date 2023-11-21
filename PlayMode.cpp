@@ -161,14 +161,8 @@ PlayMode::PlayMode()
     player.camera->transform->name = "player_c";
     scene.cams["player_c"] = player.camera;
     
-    //default view point behind player
-
-    // Due to the crosshair, need to move player a little left/right
-    player.camera->transform->position = glm::vec3(-1.0f, -5.0f, 2.5f);
-    
-    //rotate camera to something pointing in way of player
-    // arcsin 0.1 ~ 6 degrees
-    player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+    player.camera->transform->position = player.defaultCameraPosition;
+    player.camera->transform->rotation = player.defaultCameraRotation;
     //glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     
     //start player walking at nearest walk point:
@@ -368,7 +362,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
             pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
             player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 
-            const glm::float32 DIST_TO_PLAYER = glm::length(glm::vec3(-1.0f, -5.0f, 2.5f));
+            const glm::float32 DIST_TO_PLAYER = glm::length(player.defaultCameraPosition);
             player.camera->transform->position =
                     -player.camera->transform->rotation * glm::vec3(-1.0f, 2.0f, DIST_TO_PLAYER);
 
@@ -383,11 +377,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 void PlayMode::update(float elapsed) {
     if (!animated && read.pressed && animationTime == 0.0) {
       //float distance = std::numeric_limits<float>::max();
-      float distance = 5.0; // sight distance
+      float distance = player.SIGHT_DISTANCE; // can see this far
       auto playerToWorld = player.transform->make_local_to_world();
       auto here = player.transform->position;
 std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
       std::string selected;
+
+      // find the closest text bearer
       for (const auto &[name, mesh] : textBearers) {
         if (!endsWith(name, "_m")) {
           continue;
@@ -411,11 +407,11 @@ std::cout << "selected: " << selected << std::endl;
         animated = true;
         animationTime = 0.0f;
         auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
-        auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
         //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
         auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
-        auto endrotation = glm::quat_cast(glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
+        auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
         auto startrotation = glm::quat_cast(glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
+        auto endrotation = glm::quat_cast(glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
         splineposition = Spline<glm::vec3>();
         splinerotation = Spline<glm::quat>();
         splineposition.set(0.0f, startposition);
@@ -442,8 +438,8 @@ std::cout << "selected: " << selected << std::endl;
     // reset camera
     if (!animated && !read.pressed && animationTime > 0.0) {
       animationTime = 0.0;
-      player.camera->transform->position = glm::vec3(-1.0f, -5.0f, 2.5f);
-      player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+      player.camera->transform->position = player.defaultCameraPosition;
+      player.camera->transform->rotation = player.defaultCameraRotation;
       // back to player local camera
       player.camera->transform->parent = player.transform;
     }

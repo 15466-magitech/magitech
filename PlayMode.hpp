@@ -65,6 +65,16 @@ struct PlayMode : Mode {
         bool has_paint_ability = false;
         bool has_unlock_ability = false;
 
+        static constexpr float SIGHT_DISTANCE = 5.0f;
+
+        // camera positioning
+        //default view point behind player
+        // Due to the crosshair, need to move player a little left/right
+        static constexpr glm::vec3 defaultCameraPosition = glm::vec3(-1.0f, -5.0f, 2.5f);
+        //rotate camera to something pointing in way of player
+        // arcsin 0.1 ~ 6 degrees
+        static constexpr glm::vec3 defaultCameraRotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+
     } player;
     
     // Wireframe logics
