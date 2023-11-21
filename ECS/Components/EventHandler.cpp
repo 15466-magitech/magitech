@@ -1,9 +1,10 @@
 #include <functional>
 #include "EventHandler.hpp"
 
-EventHandler::EventHandler(const std::function<bool(const SDL_Event &, const glm::uvec2 &)> &f)
-        : handler(f) {}
-
-bool EventHandler::handle_event(const SDL_Event &evt, const glm::uvec2 &move) {
-    return handler(evt, move);
+bool EventHandler::handle_event_all(const SDL_Event &evt, const glm::uvec2 &window_size) {
+    bool handled;
+    EventHandler::system([&](EventHandler &h) {
+        handled |= h.handle(evt, window_size);
+    });
+    return handled;
 }

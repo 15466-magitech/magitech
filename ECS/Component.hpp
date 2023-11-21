@@ -13,8 +13,9 @@ struct Component {
         return map;
     };
     
-    // added to in Entity::remove_component<T>()
-    inline static std::vector<Entity *> to_delete;
+    /* added to in Entity::remove_component<T>() */
+    inline static std::vector<uint32_t> to_delete;
+    inline static std::unordered_map<uint32_t, T> to_add;
     inline static bool system_running = false;
     
     /*
@@ -29,9 +30,13 @@ struct Component {
             f(component);
         }
         system_running = false;
-        for (Entity *entity: to_delete) {
-            entity->remove_component<T>();
+        for (uint32_t id: to_delete) {
+            get_map().erase(id);
         }
         to_delete.clear();
+        for (auto [id, component]: to_add) {
+            get_map().emplace(id, component);
+        }
+        to_add.clear();
     }
 };

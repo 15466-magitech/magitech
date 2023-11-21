@@ -26,7 +26,8 @@ struct PlayMode : Mode {
     
     //----- game state -----
     
-    Terminal terminal, text_display;
+    TextDisplay text_display;
+    Terminal terminal;
     
     //input tracking:
     struct Button {
@@ -43,7 +44,7 @@ struct PlayMode : Mode {
     Scene scene;
     
     //player info:
-    struct Player {
+    struct Player : Entity {
         WalkPoint at;
         //transform is at player's feet and will be yawed by mouse left/right motion:
         Scene::Transform *transform = nullptr;
@@ -69,23 +70,23 @@ struct PlayMode : Mode {
     //
     
     void update_wireframe();
-    void update_wireframe(std::shared_ptr<Scene::Collider> collider);
+    void update_wireframe(const std::shared_ptr<Scene::Collider>& collider);
     
-    void initialize_wireframe_objects(std::string prefix);
+    void initialize_wireframe_objects(const std::string& prefix);
     
     
     // Unlock logics(for open sesame)
-    void unlock(std::string prefix);
+    void unlock(const std::string& prefix);
     
     
     //initilization functions
     void initialize_scene_metadata();
     
-    void initialize_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
+    void initialize_collider(const std::string& prefix_pattern, Load<MeshBuffer> meshes);
 
-    void initialize_text_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
+    void initialize_text_collider(const std::string& prefix_pattern, Load<MeshBuffer> meshes);
 
     // Mouse-collider check return the collider and the distance pair
-    std::pair<std::shared_ptr<Scene::Collider>,float> mouse_collider_check(std::string prefix="col_",bool use_crosshair = false);
-    std::pair<std::shared_ptr<Scene::Collider>,float> mouse_text_check(std::string prefix="text_",bool use_crosshair = false);
+    std::pair<std::shared_ptr<Scene::Collider>,float> mouse_collider_check(const std::string& prefix="col_",bool use_crosshair = false);
+    std::pair<std::shared_ptr<Scene::Collider>,float> mouse_text_check(const std::string& prefix="text_",bool use_crosshair = false);
 };

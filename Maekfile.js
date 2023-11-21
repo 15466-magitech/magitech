@@ -160,8 +160,13 @@ const common_names = [
     maek.CPP('ECS/Entity.cpp'),
     maek.CPP('ECS/Component.cpp'),
     maek.CPP('ECS/Components/EventHandler.cpp'),
+    maek.CPP('ECS/Components/Draw.cpp'),
+    maek.CPP('ECS/Components/TerminalCommandHandler.cpp'),
+    maek.CPP('ECS/Components/TerminalDeactivateHandler.cpp'),
+    maek.CPP('ECS/HandlerComponent.cpp'),
     maek.CPP('spline.cpp'),
     maek.CPP('Terminal.cpp'),
+    maek.CPP('TextDisplay.cpp'),
     maek.CPP('MonospaceFont.cpp'),
     maek.CPP('TexProgram.cpp'),
     maek.CPP('TextStorage.cpp')
