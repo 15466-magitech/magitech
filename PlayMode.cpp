@@ -470,7 +470,7 @@ std::cout << "selected: " << selected << std::endl;
             float overlap = std::numeric_limits<float>::infinity();
             
             
-            for (auto collider: scene.colliders) {
+            for (const auto &collider: scene.colliders) {
                 if (collider->name == player.name) {
                     continue;
                 } else {
@@ -660,7 +660,7 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
     
     {
         bool found = false;
-        for (auto it: wireframe_objects) {
+        for (const auto &it: wireframe_objects) {
             if (it->name == c->name) {
                 found = true;
             }
@@ -750,8 +750,8 @@ void PlayMode::update_wireframe() {
         // turn wireframe object real
         if (collider_to_wireframe == nullptr) {
             // Add it back
-            for (auto &it: current_wireframe_objects_map) {
-                std::string name = it.first;
+            for (const auto &it: current_wireframe_objects_map) {
+                const std::string &name = it.first;
                 auto collider = it.second;
                 auto dist = c->min_distance(collider);
                 if (dist < 0.5 && !c->intersect(collider)) {
@@ -763,7 +763,7 @@ void PlayMode::update_wireframe() {
             
         }
     } else { // Paintbrush case // This is ugly code but it works..
-        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it++) {
+        for (auto it = wireframe_objects.cbegin(); it != wireframe_objects.end(); it++) {
             auto collider = *it;
             if (collider->name == player.name || collider->name.find("Paintbrush") == std::string::npos) {
                 continue;
@@ -783,8 +783,8 @@ void PlayMode::update_wireframe() {
         }
         if (collider_to_wireframe == nullptr) {
             // Add it back
-            for (auto &it: current_wireframe_objects_map) {
-                std::string name = it.first;
+            for (const auto &it: current_wireframe_objects_map) {
+                const std::string &name = it.first;
                 if (name.find("Paintbrush") == std::string::npos) {
                     continue;
                 }
@@ -851,7 +851,7 @@ void PlayMode::update_wireframe() {
 // on means draw full color at first
 // check if there is a prefix_on(off)_(onetime)_xxxxx_invisible
 void PlayMode::initialize_wireframe_objects(std::string prefix) {
-    for (auto &c: scene.colliders) {
+    for (const auto &c: scene.colliders) {
         if (c->name.find(prefix) != std::string::npos) {
             wireframe_objects.push_back(c);
             // Only one time?
@@ -883,7 +883,7 @@ void PlayMode::initialize_wireframe_objects(std::string prefix) {
     
     // remove colliders in wf_obj_block_map && colliders is currently wireframe
     // remove colliders in wf_obj_pass_map && colliders is currently real
-    for (auto it: wf_obj_block_map) {
+    for (const auto &it: wf_obj_block_map) {
         auto d = scene.drawble_name_map[it.second->name];
         if (d->wireframe_info.draw_frame == true) {
             scene.colliders.remove(it.second);
@@ -901,7 +901,7 @@ void PlayMode::initialize_wireframe_objects(std::string prefix) {
 // Should be called after all drawables are loaded into the list
 void PlayMode::initialize_scene_metadata() {
     std::shared_ptr<Scene::Drawable> walkmesh_to_remove = nullptr;
-    for (auto d: scene.drawables) {
+    for (const auto &d: scene.drawables) {
         std::string name = d->transform->name;
         if (name == "WalkMesh") {
             walkmesh_to_remove = d;
@@ -919,8 +919,8 @@ void PlayMode::initialize_scene_metadata() {
 // Which mesh to lookup?
 // prefix_xxxxx
 void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes) {
-    for (auto &it: meshes->meshes) {
-        std::string name = it.first;
+    for (const auto &it: meshes->meshes) {
+        const std::string &name = it.first;
         auto mesh = it.second;
         if (name.find(prefix) != std::string::npos || name == "Player") {
             glm::vec3 min = mesh.min;
@@ -936,8 +936,8 @@ void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes) 
 
 
 void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> meshes) {
-    for (auto &it: meshes->meshes) {
-        std::string name = it.first;
+    for (const auto &it: meshes->meshes) {
+        const std::string &name = it.first;
         auto mesh = it.second;
         if (name.find(prefix) != std::string::npos) {
             glm::vec3 min = mesh.min;
@@ -963,7 +963,7 @@ void PlayMode::unlock(std::string prefix) {
     std::shared_ptr<Scene::Collider> collider_to_remove = nullptr;
     std::string name_to_remove;
     
-    for (auto collider: scene.colliders) {
+    for (const auto &collider: scene.colliders) {
         if (collider->name.find(prefix) != std::string::npos) {
             auto dist = c->min_distance(collider);
             if (dist < 2.0) {
@@ -1025,7 +1025,7 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(st
     
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
     
-    for (auto it: scene.textcollider_name_map) {
+    for (const auto &it: scene.textcollider_name_map) {
         auto c = it.second;
         if (c->name.find(prefix) != std::string::npos) {
             bool intersected;
@@ -1090,7 +1090,7 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
     
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
     
-    for (auto it: scene.collider_name_map) {
+    for (const auto &it: scene.collider_name_map) {
         auto c = it.second;
         if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
             bool intersected;
@@ -1119,7 +1119,7 @@ ColliderType PlayMode::check_collider_type(std::shared_ptr<Scene::Collider> c){
         return UNKNOWN;
     }
     else{
-        std::string name = c->name;
+        const std::string &name = c->name;
 
         if(name.find("col_wire")!=std::string::npos){
             return WIREFRAME;
