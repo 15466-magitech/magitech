@@ -73,7 +73,8 @@ struct PlayMode : Mode {
     //
 
     void genFramebuffers();
-    
+    void resizeDepthTex();
+
     void update_wireframe();
     void update_wireframe(std::shared_ptr<Scene::Collider> collider);
     

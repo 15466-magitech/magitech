@@ -549,6 +549,29 @@ std::cout << "selected: " << selected << std::endl;
     down.downs = 0;
 }
 
+int lastWidth = -1;
+int lastHeight = -1;
+
+void PlayMode::resizeDepthTex() {
+    glBindTexture(GL_TEXTURE_2D, depth_tex);
+    //allocate texture memory:
+    int lw = lastWidth;
+    int lh = lastHeight;
+
+    SDL_GL_GetDrawableSize(window, &lastWidth, &lastHeight);
+    if (lastWidth == lw && lastHeight == lh)
+        return;
+
+    glm::uvec2 window_size = glm::uvec2(lastWidth, lastHeight);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+    //set sampling parameters for texture:
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 // Code derived from https://15466.courses.cs.cmu.edu/lesson/framebuffers
 void PlayMode::genFramebuffers() {
     glGenFramebuffers(1, &depth_fb);
@@ -557,18 +580,7 @@ void PlayMode::genFramebuffers() {
     //Allocate and bind texture to framebuffer's color attachments:
     //allocate texture name:
     glGenTextures(1, &depth_tex);
-    glBindTexture(GL_TEXTURE_2D, depth_tex);
-    //allocate texture memory:
-    int w, h;
-    SDL_GL_GetDrawableSize(window, &w, &h);
-    glm::uvec2 window_size = glm::uvec2(w, h);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
-    //set sampling parameters for texture:
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    resizeDepthTex();
 
     //attach texture to framebuffer as the first color buffer:
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
@@ -577,6 +589,7 @@ void PlayMode::genFramebuffers() {
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
+    resizeDepthTex();
     //update camera aspect ratio for drawable:
     player.camera->aspect = float(drawable_size.x) / float(drawable_size.y);
     
