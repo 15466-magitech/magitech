@@ -21,7 +21,7 @@ Here is a quick overview of what is included. For further information, ☺read t
 	- shaders (you might also build on these):
 		- [`ColorProgram.hpp`](ColorProgram.hpp), [`ColorProgram.cpp`](ColorProgram.cpp) GLSL shader that draws objects with vertex colors.
 		- [`ColorTextureProgram.hpp`](ColorTextureProgram.hpp), [`ColorTextureProgram.cpp`](ColorTextureProgram.cpp) GLSL shader that draws objects with vertex colors and textures.
-		- [`LitColorTextureProgram.hpp`](LitColorTextureProgram.hpp), [`LitColorTextureProgram.cpp`](LitColorTextureProgram.cpp) GLSL shader that draws objects with vertex colors, textures, and lighting.
+		- [`LitColorTextureProgram.hpp`](ComicBookProgram.hpp), [`LitColorTextureProgram.cpp`](ComicBookProgram.cpp) GLSL shader that draws objects with vertex colors, textures, and lighting.
 	- [`DrawLines.hpp`](DrawLines.hpp), [`DrawLines.cpp`](DrawLines.cpp) draw lines in a 3D scene. Very useful for debugging.
 	- [`PathFont.hpp`](PathFont.hpp), [`PathFont.cpp`](PathFont.cpp) line-based font, used by DrawLines for text drawing.
 	- [`read_write_chunk.hpp`](read_write_chunk.hpp) templated helpers for reading chunk-based binary formats.

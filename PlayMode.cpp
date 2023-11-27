@@ -1,6 +1,6 @@
 #include "PlayMode.hpp"
 
-#include "LitColorTextureProgram.hpp"
+#include "ComicBookProgram.hpp"
 #include "RocketColorTextureProgram.hpp"
 
 #include "DrawLines.hpp"
@@ -13,6 +13,7 @@
 #include "ECS/Components/EventHandler.hpp"
 #include "spline.h"
 #include "TexProgram.hpp"
+#include "load_save_png.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -65,7 +66,7 @@ std::cout << "Found sign: " << name << std::endl;
 
 Load<MeshBuffer> wizard_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("wizard.pnct"));
-    wizard_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    wizard_meshes_for_lit_color_texture_program = ret->make_vao_for_program(rocket_color_texture_program->program);
     return ret;
 });
 
@@ -90,8 +91,6 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
                 std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
                 
                 if (artworld_meshes->lookup_collection(mesh_name) == "Rocket") {
-                    //drawable->pipeline = lit_color_texture_program_pipeline;
-                    //drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
                     drawable->pipeline = rocket_color_texture_program_pipeline;
                     drawable->pipeline.vao = artworld_meshes_for_rocket_color_texture_program;
                     drawable->specular_info.shininess = 10.0;
@@ -123,7 +122,7 @@ PlayMode::PlayMode(SDL_Window* window)
 
     this->window = window;
     glGenVertexArrays(1, &image_vao);
-    genFramebuffers();
+    gen_framebuffers();
     image_vao = gen_image(glm::vec2(-1.0f, -1.0f), glm::vec2(2.0f, 2.0f), 0.0f, 0.0f, 1.0f, 1.0f);
 
     // TODO: remove this test code
@@ -186,7 +185,7 @@ PlayMode::PlayMode(SDL_Window* window)
     scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
     std::shared_ptr<Scene::Drawable> wizard_drawable = scene.drawables.back();
     
-    wizard_drawable->pipeline = lit_color_texture_program_pipeline;
+    wizard_drawable->pipeline = rocket_color_texture_program_pipeline;
     
     wizard_drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
     wizard_drawable->pipeline.type = mesh.type;
@@ -552,9 +551,7 @@ std::cout << "selected: " << selected << std::endl;
 int lastWidth = -1;
 int lastHeight = -1;
 
-void PlayMode::resizeDepthTex() {
-    glBindTexture(GL_TEXTURE_2D, depth_tex);
-    //allocate texture memory:
+void PlayMode::resize_depth_tex() {
     int lw = lastWidth;
     int lh = lastHeight;
 
@@ -563,8 +560,17 @@ void PlayMode::resizeDepthTex() {
         return;
 
     glm::uvec2 window_size = glm::uvec2(lastWidth, lastHeight);
+
+    glBindTexture(GL_TEXTURE_2D, depth_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
-    //set sampling parameters for texture:
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glBindTexture(GL_TEXTURE_2D, shadow_depth_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -572,24 +578,49 @@ void PlayMode::resizeDepthTex() {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void PlayMode::gen_dot_texture() {
+    glGenTextures(1, &dot_tex);
+
+    glm::uvec2 size;
+    std::vector<glm::u8vec4> data;
+    load_png(data_path("dot.png"), &size, &data, LowerLeftOrigin);
+
+    glBindTexture(GL_TEXTURE_2D, dot_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    GL_ERRORS();
+}
+
 // Code derived from https://15466.courses.cs.cmu.edu/lesson/framebuffers
-void PlayMode::genFramebuffers() {
+void PlayMode::gen_framebuffers() {
+    gen_dot_texture();
+
     glGenFramebuffers(1, &depth_fb);
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
-
-    //Allocate and bind texture to framebuffer's color attachments:
-    //allocate texture name:
     glGenTextures(1, &depth_tex);
-    resizeDepthTex();
 
-    //attach texture to framebuffer as the first color buffer:
+    glGenFramebuffers(1, &shadow_depth_fb);
+    glBindFramebuffer(GL_FRAMEBUFFER, shadow_depth_fb);
+    glGenTextures(1, &shadow_depth_tex);
+
+    resize_depth_tex();
+
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, shadow_depth_fb);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_depth_tex, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
-    resizeDepthTex();
+    resize_depth_tex();
     //update camera aspect ratio for drawable:
     player.camera->aspect = float(drawable_size.x) / float(drawable_size.y);
     
@@ -604,19 +635,12 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
                  glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
 
     int w, h;
+    int wn, hn;
     SDL_GL_GetDrawableSize(window, &w, &h);
-    glm::vec2 window_size = glm::vec2(w, h);
-    glUniform2fv(lit_color_texture_program->WINDOW_DIMENSIONS, 1, glm::value_ptr(window_size));
+    SDL_GetWindowSize(window, &wn, &hn);
+    glm::vec4 window_size = glm::vec4(w, h, wn, hn);
+    glUniform4fv(lit_color_texture_program->WINDOW_DIMENSIONS, 1, glm::value_ptr(window_size));
     glUseProgram(0);
-    
-//    glUseProgram(rocket_color_texture_program->program);
-//    glUniform1i(rocket_color_texture_program->LIGHT_TYPE_int, 1);
-//    glUniform3fv(rocket_color_texture_program->LIGHT_DIRECTION_vec3, 1,
-//                 glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
-//    glUniform3fv(rocket_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
-//    glUniform3fv(rocket_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
-//                 glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
-//    glUseProgram(0);
     
     glClearColor(0.5f, 0.7f, 0.9f, 1.0f);
     glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
@@ -625,6 +649,17 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
+
+    // Draw the depth framebuffer for edge detection
+    glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    scene.draw(*player.camera, false);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    scene.draw(*player.camera, true);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    // Draw the depth framebuffer for edge detection
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
     glClear(GL_DEPTH_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -635,8 +670,22 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, depth_tex);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, dot_tex);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, shadow_depth_tex);
     glActiveTexture(GL_TEXTURE0);
 
+    glBindFramebuffer(GL_FRAMEBUFFER, shadow_depth_fb);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    scene.draw_shadow(*player.camera, false);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    scene.draw_shadow(*player.camera, true);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+
+    // Draw the world
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     scene.draw(*player.camera, false);
@@ -681,7 +730,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     terminal.draw();
     text_display.draw();
 
-    //draw_image(image_vao, depth_tex, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.4f, 0.4f, 0.2f, 0.2f);
+    draw_image(image_vao, shadow_depth_tex, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.4f, 0.4f, 0.2f, 0.2f);
 
     GL_ERRORS();
 }

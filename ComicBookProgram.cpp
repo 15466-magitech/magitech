@@ -1,4 +1,4 @@
-#include "LitColorTextureProgram.hpp"
+#include "ComicBookProgram.hpp"
 
 #include "gl_compile_program.hpp"
 #include "gl_errors.hpp"
@@ -6,8 +6,8 @@
 
 Scene::Drawable::Pipeline lit_color_texture_program_pipeline;
 
-Load< LitColorTextureProgram > lit_color_texture_program(LoadTagEarly, []() -> LitColorTextureProgram const * {
-	LitColorTextureProgram *ret = new LitColorTextureProgram();
+Load< ComicBookProgram > lit_color_texture_program(LoadTagEarly, []() -> ComicBookProgram const * {
+	ComicBookProgram *ret = new ComicBookProgram();
 
 	//----- build the pipeline template -----
 	lit_color_texture_program_pipeline.program = ret->program;
@@ -55,7 +55,7 @@ Load< LitColorTextureProgram > lit_color_texture_program(LoadTagEarly, []() -> L
 	return ret;
 });
 
-LitColorTextureProgram::LitColorTextureProgram() {
+ComicBookProgram::ComicBookProgram() {
 	//Compile vertex and fragment shaders using the convenient 'gl_compile_program' helper function:
 	program = gl_compile_program(
 		//vertex shader:
@@ -64,7 +64,9 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"uniform mat4x3 OBJECT_TO_LIGHT;\n"
 		"uniform mat3 NORMAL_TO_LIGHT;\n"
         "uniform sampler2D DEPTH;\n"
-		"in vec4 Position;\n"
+        "uniform sampler2D DOT;\n"
+        "uniform sampler2D SHADOW_DEPTH;\n"
+        "in vec4 Position;\n"
 		"in vec3 Normal;\n"
 		"in vec4 Color;\n"
 		"in vec2 TexCoord;\n"
@@ -82,9 +84,11 @@ LitColorTextureProgram::LitColorTextureProgram() {
 	,
 		//fragment shader:
 		"#version 330\n"
+        "#define PI 3.1415926538\n"
         "uniform mat4 OBJECT_TO_CLIP;\n"
         "uniform sampler2D TEX;\n"
-		"uniform int LIGHT_TYPE;\n"
+        "uniform sampler2D SHADOW_DEPTH;\n"
+        "uniform int LIGHT_TYPE;\n"
 		"uniform vec3 LIGHT_LOCATION;\n"
 		"uniform vec3 LIGHT_DIRECTION;\n"
 		"uniform vec3 LIGHT_ENERGY;\n"
@@ -93,7 +97,9 @@ LitColorTextureProgram::LitColorTextureProgram() {
         "uniform vec3 SPECULAR_BRIGHTNESS;\n"
         "uniform float LIGHT_CUTOFF;\n"
         "uniform sampler2D DEPTH;\n"
-        "uniform vec2 WINDOW_DIMENSIONS;\n"
+        "uniform sampler2D DOT;\n"
+        "uniform vec4 WINDOW_DIMENSIONS;\n"
+        "uniform bool COMIC_BOOK;"
         "in vec3 position;\n"
 		"in vec3 normal;\n"
 		"in vec4 color;\n"
@@ -111,7 +117,10 @@ LitColorTextureProgram::LitColorTextureProgram() {
         "    return pow(1.0f - texture(DEPTH, vec2(x / WINDOW_DIMENSIONS.x, y / WINDOW_DIMENSIONS.y)).x, 0.1);\n"
         "}\n"
         "float outlineWeight(float x, float y) {\n"
-        "    return int(abs(tex(x - 1, y) - tex(x, y)) + abs(tex(x, y - 1) - tex(x, y)) > 0.002);\n"
+        "    float a = 0.00025;\n"
+        "    float b = 0.002;\n"
+        "    float v = (abs(tex(x - 1, y) - tex(x, y)) + abs(tex(x, y - 1) - tex(x, y)));\n"
+        "    return max(0.0, min(1.0, (v - a) / (b - a)));\n"
         "}\n"
         "float pixelShade(float x, float y, float shade) {\n"
         "   float bsize = 0.25;\n"
@@ -121,6 +130,23 @@ LitColorTextureProgram::LitColorTextureProgram() {
         "   float r = float((int(x) * 6833 + int(y) * 4643) % 7477) / 7477.0 / res;\n"
         "   float b = r + abs(x / res - float(int(x / res)) - 0.5) + abs(y / res - float(int(y / res)) - 0.5);\n"
         "   return (int(frac / 2.0 >= pow(b, 1) || frac / 2.0 >= pow(1 - b, 1)) + bracket) * bsize;\n"
+        "}\n"
+        "vec2 rotate(vec2 pos, float angle) {\n"
+        "   return mat2(cos(angle), sin(angle), -sin(angle), cos(angle)) * pos;"
+        "}\n"
+        "vec3 pixelColor(vec2 pos, vec3 rgb) {\n"
+        "   float res = 4.5;\n"
+        "   vec3 cmy = vec3(1.0) - rgb;\n"
+        "   vec2 posM = rotate(pos / res, 75.0 / 180.0 * PI);\n"
+        "   vec2 posY = pos / res;\n"
+        "   vec2 posC = rotate(pos / res, 15.0 / 180.0 * PI);\n"
+        "   int c = int(texture(DOT, posC).r < cmy.x);\n"
+        "   int m = int(texture(DOT, posM).r < cmy.y);\n"
+        "   int y = int(texture(DOT, posY).r < cmy.z);\n"
+        "   return vec3(1.0 - float(c), 1.0 - float(m), 1.0 - float(y));\n"
+        "}\n"
+        "int sampleShadow(vec3 position) {\n"
+        "   return int(texture(SHADOW_DEPTH, vec2(position.x + 1.0, position.y + 1.0) / 2.0).x < -0.001 + (position.z + 1.0) / 2.0);\n"
         "}\n"
 		"void main() {\n"
 		"	vec3 n = normalize(normal);\n"
@@ -132,7 +158,10 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"		float nl = max(0.0, dot(n, l)) / max(1.0, dis2);\n"
 		"		e = nl * LIGHT_ENERGY;\n"
 		"	} else if (LIGHT_TYPE == 1) { //hemi light \n"
-        "       float b = float(pixelShade(gl_FragCoord.x, gl_FragCoord.y, (dot(n,-LIGHT_DIRECTION) * 0.5 + 0.5)));\n"
+        "       //float b = float(pixelShade(gl_FragCoord.x, gl_FragCoord.y, (dot(n,-LIGHT_DIRECTION) * 0.5 + 0.5)));\n"
+        "       float b = dot(n,LIGHT_DIRECTION) * 0.5 + 0.5;\n"
+        "       if (sampleShadow(position) > 0.0)\n"
+        "           b = 0.0;\n"
 		"		e = b * LIGHT_ENERGY + AMBIENT_LIGHT_ENERGY;\n"
 		"	} else if (LIGHT_TYPE == 2) { //spot light \n"
 		"		vec3 l = (LIGHT_LOCATION - position);\n"
@@ -165,6 +194,8 @@ LitColorTextureProgram::LitColorTextureProgram() {
         "       }\n"
         "   }\n"
         "   fragColor.xyz *= 1.0f - max(0.0f, weight);\n"
+        "   float scale = max(WINDOW_DIMENSIONS.z / 1280.0, WINDOW_DIMENSIONS.w / 720.0);"
+        "   fragColor.xyz = pixelColor(gl_FragCoord.xy / scale, fragColor.xyz);\n"
         "}\n"
 	);
 	//As you can see above, adjacent strings in C/C++ are concatenated.
@@ -196,17 +227,21 @@ LitColorTextureProgram::LitColorTextureProgram() {
 
     GLuint TEX_sampler2D = glGetUniformLocation(program, "TEX");
     GLuint DEPTH_sampler2D = glGetUniformLocation(program, "DEPTH");
+    GLuint DOT_sampler2D = glGetUniformLocation(program, "DOT");
+    GLuint SHADOW_DEPTH_sampler2D = glGetUniformLocation(program, "SHADOW_DEPTH");
 
 	//set TEX to always refer to texture binding zero:
 	glUseProgram(program); //bind program -- glUniform* calls refer to this program now
 
 	glUniform1i(TEX_sampler2D, 0); //set TEX to sample from GL_TEXTURE0
     glUniform1i(DEPTH_sampler2D, 1); //set DEPTH to sample from GL_TEXTURE1
+    glUniform1i(DOT_sampler2D, 2); //set DEPTH to sample from GL_TEXTURE2
+    glUniform1i(SHADOW_DEPTH_sampler2D, 3); //set SHADOW_DEPTH to sample from GL_TEXTURE3
 
 	glUseProgram(0); //unbind program -- glUniform* calls refer to ??? now
 }
 
-LitColorTextureProgram::~LitColorTextureProgram() {
+ComicBookProgram::~ComicBookProgram() {
 	glDeleteProgram(program);
 	program = 0;
 }

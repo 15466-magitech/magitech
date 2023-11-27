@@ -136,7 +136,7 @@ const game_names = [
     maek.CPP('WalkMesh.cpp'),
     maek.CPP('PlayMode.cpp'),
     maek.CPP('main.cpp'),
-    maek.CPP('LitColorTextureProgram.cpp'),
+    maek.CPP('ComicBookProgram.cpp'),
     maek.CPP('RocketColorTextureProgram.cpp'),
     //maek.CPP('ColorTextureProgram.cpp'),  //not used right now, but you might want it
     maek.CPP('Sound.cpp'),
@@ -145,6 +145,7 @@ const game_names = [
 ];
 
 const common_names = [
+    maek.CPP('ShadowMapProgram.cpp'),
     maek.CPP('data_path.cpp'),
     maek.CPP('PathFont.cpp'),
     maek.CPP('PathFont-font.cpp'),

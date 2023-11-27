@@ -41,6 +41,10 @@ struct PlayMode : Mode {
 
     GLuint depth_fb;
     GLuint depth_tex;
+    GLuint dot_tex;
+
+    GLuint shadow_depth_fb;
+    GLuint shadow_depth_tex;
 
     SDL_Window* window;
     //local copy of the game scene (so code can change it during gameplay):
@@ -57,7 +61,7 @@ struct PlayMode : Mode {
         //other metadata
         std::string name = "Player";
     } player;
-    
+
     // Wireframe logics
     bool has_paint_ability = false;
     std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
@@ -72,8 +76,9 @@ struct PlayMode : Mode {
     std::list<std::pair<glm::vec3,glm::vec3>> rays;
     //
 
-    void genFramebuffers();
-    void resizeDepthTex();
+    void gen_dot_texture();
+    void gen_framebuffers();
+    void resize_depth_tex();
 
     void update_wireframe();
     void update_wireframe(std::shared_ptr<Scene::Collider> collider);

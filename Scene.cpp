@@ -2,8 +2,10 @@
 
 #include "gl_errors.hpp"
 #include "read_write_chunk.hpp"
+#include "ShadowMapProgram.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include <fstream>
 
@@ -83,18 +85,60 @@ glm::mat4 Scene::Camera::make_projection() const {
 void Scene::draw(Camera const &camera, bool draw_frame ) const {
 	assert(camera.transform);
 	glm::mat4 world_to_clip = camera.make_projection() * glm::mat4(camera.transform->make_world_to_local());
-	glm::mat4x3 world_to_light = glm::mat4x3(1.0f);
+    glm::mat4 rot = glm::toMat4(glm::angleAxis(glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(-22.5f), glm::vec3(0.0f, 1.0f, 0.0f)));
+    glm::mat4x3 world_to_light = glm::mat4x3(0.03f, 0.0f, 0.0f,  0.0f, 0.03f, 0.0f,  0.0f, 0.0f, -0.03f,  0.0f, 0.0f, 0.0f) * rot;
 	draw(world_to_clip, world_to_light, draw_frame);
 }
 
-void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light, bool draw_frame) const {
+void Scene::draw_shadow(Camera const &camera, bool draw_frame ) const {
+    assert(camera.transform);
+    glm::mat4 world_to_clip = camera.make_projection() * glm::mat4(camera.transform->make_world_to_local());
+    glm::mat4 rot = glm::toMat4(glm::angleAxis(glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(-22.5f), glm::vec3(0.0f, 1.0f, 0.0f)));
+    glm::mat4x3 world_to_light = glm::mat4x3(0.03f, 0.0f, 0.0f,  0.0f, 0.03f, 0.0f,  0.0f, 0.0f, -0.03f,  0.0f, 0.0f, 0.0f) * rot;
+    draw_shadow(world_to_clip, world_to_light, draw_frame);
+}
 
-	//Iterate through all drawables, sending each one to OpenGL:
+void Scene::draw_shadow(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light, bool draw_frame) const
+{
+    for (auto const &drawable: drawables)
+    {
+        if (drawable->wireframe_info.draw_frame != draw_frame) {
+            continue;
+        }
+
+        glUseProgram(shadow_map_program_pipeline.program);
+
+        Scene::Drawable::Pipeline const &pipeline = drawable->pipeline;
+
+        glBindVertexArray(pipeline.vao);
+
+
+        assert(drawable->transform); //drawables *must* have a transform
+        glm::mat4x3 object_to_world = drawable->transform->make_local_to_world();
+
+        glm::mat4x3 object_to_light = world_to_light * glm::mat4(object_to_world);
+
+        glUniformMatrix4x3fv(shadow_map_program_pipeline.OBJECT_TO_LIGHT_mat4x3, 1, GL_FALSE,
+                             glm::value_ptr(object_to_light));
+        glm::mat4 object_to_clip = world_to_clip * glm::mat4(object_to_world);
+        glUniformMatrix4fv(shadow_map_program_pipeline.OBJECT_TO_CLIP_mat4, 1, GL_FALSE,
+                           glm::value_ptr(object_to_clip));
+
+        glDrawArrays(pipeline.type, pipeline.start, pipeline.count);
+    }
+
+    glUseProgram(0);
+    glBindVertexArray(0);
+
+    GL_ERRORS();
+}
+
+void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light, bool draw_frame) const {
+    // Draw the scene
 	for (auto const &drawable : drawables) {
 		if (drawable->wireframe_info.draw_frame != draw_frame){
 			continue;
 		}
-
 
 		//Reference to drawable's pipeline for convenience:
 		Scene::Drawable::Pipeline const &pipeline = drawable->pipeline;
