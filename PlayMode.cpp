@@ -117,7 +117,7 @@ Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * 
     return ret;
 });
 
-PlayMode::PlayMode()
+PlayMode::PlayMode(SDL_Window* window)
         : text_display(5, 75, glm::vec2(-0.50f, -0.50f), glm::vec2(1.0f, 0.2f)),
           terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
           scene(*artworld_scene) {

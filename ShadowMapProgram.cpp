@@ -40,7 +40,7 @@ ShadowMapProgram::ShadowMapProgram() {
             "void main() {\n"
             "	//position = OBJECT_TO_CLIP * Position;\n"
             "	gl_Position = vec4(OBJECT_TO_LIGHT * Position, 1.0f);\n"
-q            "	normal = NORMAL_TO_LIGHT * Normal;\n"
+            "	normal = NORMAL_TO_LIGHT * Normal;\n"
             "	color = Color;\n"
             "	texCoord = TexCoord;\n"
             "}\n",
