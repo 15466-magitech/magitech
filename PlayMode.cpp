@@ -11,13 +11,15 @@
 #include "data_path.hpp"
 #include "ECS/Entity.hpp"
 #include "ECS/Components/EventHandler.hpp"
+#include "ECS/Components/TerminalDeactivateHandler.hpp"
+#include "ECS/Components/Draw.hpp"
 #include "spline.h"
 
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include <random>
+#include <utility>
 
 GLuint artworld_meshes_for_lit_color_texture_program = 0;
 GLuint artworld_meshes_for_rocket_color_texture_program = 0;
@@ -25,40 +27,40 @@ GLuint textcube_meshes_for_lit_color_texture_program = 0;
 GLuint wizard_meshes_for_lit_color_texture_program = 0;
 
 // object name to transform
-std::unordered_map<std::string, Scene::Transform *>nameToTransform;
+std::unordered_map<std::string, Scene::Transform *> nameToTransform;
 // text bearer name to mesh
-std::unordered_map<std::string, Mesh const *>textBearers;
+std::unordered_map<std::string, Mesh const *> textBearers;
 // text bearer name to camera
-std::unordered_map<std::string, std::string>textBearerCams;
+std::unordered_map<std::string, std::string> textBearerCams;
 
 // c++ still sucks
-bool endsWith(const std::string& str, const std::string& suffix) {
-  if (str.length() < suffix.length()) {
-    return false;
-  }
-  return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+bool endsWith(const std::string &str, const std::string &suffix) {
+    if (str.length() < suffix.length()) {
+        return false;
+    }
+    return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
 
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     artworld_meshes_for_rocket_color_texture_program = ret->make_vao_for_program(rocket_color_texture_program->program);
-
+    
     // register text bearers and their cameras
-    for (const auto &[name, mesh] : ret->meshes) {
-      if (name.rfind("text_", 0) != std::string::npos) {
-std::cout << "Found sign: " << name << std::endl;
-        if (!endsWith(name, "_m")) {
-          std::cerr << "Sign mesh " << name << " doesn't end in _m" << std::endl;
-        } else {
-          textBearers[name] = &mesh;
-          std::string camname = name;
-          camname.back() = 'c';
-          textBearerCams[name] = camname;
+    for (const auto &[name, mesh]: ret->meshes) {
+        if (name.rfind("text_", 0) != std::string::npos) {
+            std::cout << "Found sign: " << name << std::endl;
+            if (!endsWith(name, "_m")) {
+                std::cerr << "Sign mesh " << name << " doesn't end in _m" << std::endl;
+            } else {
+                textBearers[name] = &mesh;
+                std::string camname = name;
+                camname.back() = 'c';
+                textBearerCams[name] = camname;
+            }
         }
-      }
     }
-
+    
     return ret;
 });
 
@@ -79,7 +81,7 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 // keep transforms available
                 nameToTransform[mesh_name] = transform;
-
+                
                 if (mesh_name == "Player")
                     return;
                 
@@ -116,18 +118,36 @@ Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * 
 });
 
 PlayMode::PlayMode()
-        : terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
-          text_display(5, 75, glm::vec2(-0.50f, -0.50f), glm::vec2(1.0f, 0.2f)),
+        : text_display(5, 75, glm::vec2(-0.50f, -0.50f), glm::vec2(1.0f, 0.2f)),
+          terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
           scene(*artworld_scene) {
     // TODO: remove this test code
-    std::cout << "Testing basic ECS mechanics..." << std::endl;
     {
-        Entity a;
-        a.add_component<EventHandler>([](const SDL_Event &evt, const glm::uvec2 &window_size) {
-            return false;
+        std::cout << "Testing basic ECS mechanics..." << std::endl;
+        struct TestComponent : Component<TestComponent> {
+            std::string name;
+            
+            explicit TestComponent(std::string name) : name(std::move(name)) {}
+        };
+        Entity a, b, c, d;
+        a.add_component<TestComponent>("A");
+        b.add_component<TestComponent>("B");
+        c.add_component<TestComponent>("C");
+        d.add_component<TestComponent>("D");
+        std::cout << "TestComponent A has name " << a.get_component<TestComponent>()->name << "\n";
+        TestComponent::system([&d](TestComponent &x) {
+            std::cout << "Hello from a TestComponent with name " << x.name << "!\n";
+            if (x.name == "D") {
+                std::cout << "Found a component with name D, deleting outside d...\n";
+                d.remove_component<TestComponent>();
+            }
         });
+        c.remove_component<TestComponent>();
+        TestComponent::system([](TestComponent &x) {
+            std::cout << "Hello again from a TestComponent with name " << x.name << "!\n";
+        });
+        std::cout << "ECS ok" << std::endl;
     }
-    std::cout << "Success!" << std::endl;
     {
         std::cout << "Testing spline" << std::endl;
         glm::vec2 start(2.0, 0.0);
@@ -186,100 +206,97 @@ PlayMode::PlayMode()
     initialize_collider("col_", artworld_meshes);
     initialize_wireframe_objects("col_wire");
     initialize_text_collider("text_", artworld_meshes);
-}
-
-PlayMode::~PlayMode() = default;
-
-bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
-    if (evt.type == SDL_KEYDOWN) {
-        if (text_display.active) {
-            text_display.deactivate();
-        }
-        Command command = terminal.handle_key(evt.key.keysym.sym);
-        if (command != Command::False) {
-            switch (command) {
-                case Command::False:
-                    assert(false && "impossible");
-                    break;
-                case Command::True:
-                    break;
-                case Command::OpenSesame:
+    
+    player.add_component<TerminalCommandHandler>([this](Command command) {
+        switch (command) {
+            case Command::OpenSesame:
+                unlock("unlock_");
                     //unlock("unlock_");
                     player.has_unlock_ability = true;
                     std::cout << "command was open sesame!\n";
-                    break;
-                case Command::Mirage:
-                    //activate paintbrush
-                {
-                    std::string pb_object_name = "col_wire_off_block_Paintbrush";
+                break;
+            case Command::Mirage:
+                //activate paintbrush
+                std::string pb_object_name = "col_wire_off_block_Paintbrush";
                     if (!player.has_paint_ability) {
-                        auto pb = scene.collider_name_map[pb_object_name];
-                        
-                        float distance = pb->min_distance(scene.collider_name_map[player.name]);
-                        
-                        if (distance < 10) {
-                            auto d = scene.drawble_name_map[pb_object_name];
-                            assert(d->wireframe_info.draw_frame);
-                            d->wireframe_info.draw_frame = false;
+                    auto pb = scene.collider_name_map[pb_object_name];
+                    
+                    float distance = pb->min_distance(scene.collider_name_map[player.name]);
+                    
+                    if (distance < 10) {
+                        auto d = scene.drawble_name_map[pb_object_name];
+                        assert(d->wireframe_info.draw_frame);
+                        d->wireframe_info.draw_frame = false;
                             player.has_paint_ability = true;
-                            scene.colliders.push_back(pb);
-                            current_wireframe_objects_map.erase(pb_object_name);
-                            if (d->wireframe_info.one_time_change) {
-                                wireframe_objects.remove(pb);
-                                wf_obj_block_map.erase(pb_object_name);
-                                wf_obj_pass_map.erase(pb_object_name);
-                                
-                            }
+                        scene.colliders.push_back(pb);
+                        current_wireframe_objects_map.erase(pb_object_name);
+                        if (d->wireframe_info.one_time_change) {
+                            wireframe_objects.remove(pb);
+                            wf_obj_block_map.erase(pb_object_name);
+                            wf_obj_pass_map.erase(pb_object_name);
+                            
                         }
-                        
                     }
                 }
-                    //update_wireframe();
-                    std::cout << "command was open mirage!\n";
-                    break;
-            }
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_ESCAPE) {
-            SDL_SetRelativeMouseMode(SDL_FALSE);
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_a) {
-            left.downs += 1;
-            left.pressed = true;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_d) {
-            right.downs += 1;
-            right.pressed = true;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_w) {
-            up.downs += 1;
-            up.pressed = true;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_s) {
-            down.downs += 1;
-            down.pressed = true;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_e) {
-            terminal.activate();
-        } else if (evt.key.keysym.sym == SDLK_r) {
-            read.downs += 1;
-            read.pressed = true;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_SPACE) {
-            std::shared_ptr<Scene::Collider> c = nullptr;
-            float distance = 0.0;
-            
-            std::tie(c, distance) = mouse_collider_check("col_",true);
-            if (c) {
+                
+                //update_wireframe();
+                std::cout << "command was open mirage!\n";
+                break;
+        }
+    });
+    
+    player.add_component<TerminalDeactivateHandler>([this]() {
+        player.add_component<EventHandler>([this](SDL_Event const &evt, glm::uvec2 const &window_size) {
+            if (evt.type == SDL_KEYDOWN) {
+                text_display.deactivate();
+                if (evt.key.keysym.sym == SDLK_ESCAPE) {
+                    SDL_SetRelativeMouseMode(SDL_FALSE);
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_a) {
+                    left.downs += 1;
+                    left.pressed = true;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_d) {
+                    right.downs += 1;
+                    right.pressed = true;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_w) {
+                    up.downs += 1;
+                    up.pressed = true;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_s) {
+                    down.downs += 1;
+                    down.pressed = true;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_e) {
+                    terminal.activate();
+                    left.pressed = false;
+                    right.pressed = false;
+                    up.pressed = false;
+                    down.pressed = false;
+                    read.pressed = false;
+                    player.remove_component<EventHandler>();
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_r) {
+                    read.downs += 1;
+                    read.pressed = true;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_SPACE) {
+                    std::shared_ptr<Scene::Collider> c = nullptr;
+                    float distance = 0.0;
+                    
+                    std::tie(c, distance) = mouse_collider_check("col_", true);
+                    if (c) {
                 auto type = check_collider_type(c);
                 switch (type)
                 {
                 case WIREFRAME:{
-                    auto player_collider = scene.collider_name_map[player.name];
-                    if (distance < 10.0f) {
-                        // Do not update if player intersects the object
-                        if (!player_collider->intersect(c))
-                            update_wireframe(c);
-                    }
+                        auto player_collider = scene.collider_name_map[player.name];
+                        if (distance < 10.0f) {
+                            // Do not update if player intersects the object
+                            if (!player_collider->intersect(c))
+                                update_wireframe(c);
+                        }
                     break;
                 }
 
@@ -294,7 +311,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                             scene.colliders.remove(c);
                             scene.collider_name_map.erase(c->name);
                             break;
-                        }               
+                        }
                     }
                     
                 }
@@ -306,131 +323,144 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 
 
-            }
-            
-            //update_wireframe();
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_c) {
-            std::shared_ptr<Scene::Collider> c = nullptr;
-            float distance = 0.0;
-            std::tie(c, distance) = mouse_text_check("text_",true);
-            if (c) {
-                if (text_storage->object_text_map.count(c->name)) {
-                    auto v = text_storage->object_text_map.at(c->name);
-                    text_display.add_text(v[0]);
-                    text_display.activate();
+                    }
+                    
+                    //update_wireframe();
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_c) {
+                    std::shared_ptr<Scene::Collider> c = nullptr;
+                    float distance = 0.0;
+                    std::tie(c, distance) = mouse_text_check("text_", true);
+                    if (c) {
+                        if (text_storage->object_text_map.count(c->name)) {
+                            auto v = text_storage->object_text_map.at(c->name);
+                            text_display.text = {""};
+                            text_display.add_text(v[0]);
+                            text_display.activate();
+                        }
+                    }
+                    return true;
+                }
+            } else if (evt.type == SDL_KEYUP) {
+                if (evt.key.keysym.sym == SDLK_a) {
+                    left.pressed = false;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_d) {
+                    right.pressed = false;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_w) {
+                    up.pressed = false;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_s) {
+                    down.pressed = false;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_r) {
+                    read.pressed = false;
+                    return true;
+                }
+            } else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+                if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
+                    SDL_SetRelativeMouseMode(SDL_TRUE);
+                    return true;
+                }
+            } else if (evt.type == SDL_MOUSEMOTION) {
+                if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
+                    glm::vec2 motion = glm::vec2(
+                            evt.motion.xrel / float(window_size.y),
+                            -evt.motion.yrel / float(window_size.y)
+                    );
+                    glm::vec3 upDir = walkmesh->to_world_smooth_normal(player.at);
+                    player.transform->rotation =
+                            glm::angleAxis(-motion.x * player.camera->fovy, upDir) * player.transform->rotation;
+                    
+                    float pitch = glm::pitch(player.camera->transform->rotation);
+                    pitch += motion.y * player.camera->fovy;
+                    //camera looks down -z (basically at the player's feet) when pitch is at zero.
+                    pitch = std::min(pitch, 0.60f * glm::pi<glm::float32>());
+                    pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
+                    player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+                    
+            const glm::float32 DIST_TO_PLAYER = glm::length(player.defaultCameraPosition);
+                    player.camera->transform->position =
+                            -player.camera->transform->rotation * glm::vec3(-1.0f, 2.0f, DIST_TO_PLAYER);
+                    
+                    
+                    return true;
                 }
             }
-            return true;
-        }
-    } else if (evt.type == SDL_KEYUP) {
-        if (evt.key.keysym.sym == SDLK_a) {
-            left.pressed = false;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_d) {
-            right.pressed = false;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_w) {
-            up.pressed = false;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_s) {
-            down.pressed = false;
-            return true;
-        } else if (evt.key.keysym.sym == SDLK_r) {
-            read.pressed = false;
-            return true;
-        }
-    } else if (evt.type == SDL_MOUSEBUTTONDOWN) {
-        if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
-            SDL_SetRelativeMouseMode(SDL_TRUE);
-            return true;
-        }
-    } else if (evt.type == SDL_MOUSEMOTION) {
-        if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
-            glm::vec2 motion = glm::vec2(
-                    evt.motion.xrel / float(window_size.y),
-                    -evt.motion.yrel / float(window_size.y)
-            );
-            glm::vec3 upDir = walkmesh->to_world_smooth_normal(player.at);
-            player.transform->rotation =
-                    glm::angleAxis(-motion.x * player.camera->fovy, upDir) * player.transform->rotation;
             
-            float pitch = glm::pitch(player.camera->transform->rotation);
-            pitch += motion.y * player.camera->fovy;
-            //camera looks down -z (basically at the player's feet) when pitch is at zero.
-            pitch = std::min(pitch, 0.60f * glm::pi<glm::float32>());
-            pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
-            player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
-
-            const glm::float32 DIST_TO_PLAYER = glm::length(player.defaultCameraPosition);
-            player.camera->transform->position =
-                    -player.camera->transform->rotation * glm::vec3(-1.0f, 2.0f, DIST_TO_PLAYER);
-
-            
-            return true;
-        }
-    }
+            return false;
+        });
+    });
     
-    return false;
+    // this activates the player component stuff
+    terminal.activate();
+    terminal.deactivate();
+}
+
+PlayMode::~PlayMode() = default;
+
+bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
+    return EventHandler::handle_event_all(evt, window_size);
 }
 
 void PlayMode::update(float elapsed) {
     if (animated == NO && read.pressed && animationTime == 0.0) {
-      //float distance = std::numeric_limits<float>::max();
+        //float distance = std::numeric_limits<float>::max();
       float distance = player.SIGHT_DISTANCE; // can see this far
-      auto playerToWorld = player.transform->make_local_to_world();
-      auto here = player.transform->position;
-std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
-      std::string selected;
+        auto playerToWorld = player.transform->make_local_to_world();
+        auto here = player.transform->position;
+        std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
+        std::string selected;
 
       // find the closest text bearer
-      for (const auto &[name, mesh] : textBearers) {
-        if (!endsWith(name, "_m")) {
-          continue;
+        for (const auto &[name, mesh]: textBearers) {
+            if (!endsWith(name, "_m")) {
+                continue;
+            }
+            auto transform = nameToTransform[name];
+            auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+            std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
+            float newdistance = glm::distance(here, there);
+            std::cout << "distance: " << newdistance << " name: " << name << std::endl;
+            if (newdistance < distance) {
+                distance = newdistance;
+                selected = name;
+            }
         }
-	auto transform = nameToTransform[name];
-        auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
-std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
-        float newdistance = glm::distance(here, there);
-std::cout << "distance: " << newdistance << " name: " << name << std::endl;
-        if (newdistance < distance) {
-          distance = newdistance;
-          selected = name;
-        }
-      }
-      if (selected.size() == 0) {
-        std::cout << "No readable sign in range" << std::endl;
-      } else {
-std::cout << "selected: " << selected << std::endl;
-        assert(selected.back() == 'm');
-        std::string selectedCamera = textBearerCams[selected];
-        auto destCamera = scene.cams[selectedCamera];
-        assert(destCamera != nullptr);
+        if (!selected.empty()) {
+            std::cout << "selected: " << selected << std::endl;
+            assert(selected.back() == 'm');
+            std::string selectedCamera = textBearerCams[selected];
+            auto destCamera = scene.cams[selectedCamera];
+            assert(destCamera != nullptr);
         animated = TO;
-        animationTime = 0.0f;
-        auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
-        //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
-        auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
+            animationTime = 0.0f;
+            auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
+            //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
+            auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
         auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
         auto startrotation = glm::quat_cast(glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
         auto endrotation = glm::quat_cast(glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
-        splineposition = Spline<glm::vec3>();
-        splinerotation = Spline<glm::quat>();
-        splineposition.set(0.0f, startposition);
-        splinerotation.set(0.0f, startrotation);
-        splineposition.set(1.0f, endposition);
-        splinerotation.set(1.0f, endrotation);
-        // now use world camera
-        player.camera->transform->parent = nullptr;
-      }
+            splineposition = Spline<glm::vec3>();
+            splinerotation = Spline<glm::quat>();
+            splineposition.set(0.0f, startposition);
+            splinerotation.set(0.0f, startrotation);
+            splineposition.set(1.0f, endposition);
+            splinerotation.set(1.0f, endrotation);
+            // now use world camera
+            player.camera->transform->parent = nullptr;
+      } else {
+        std::cout << "No readable sign in range" << std::endl;
+        }
     }
     // camera animation
     if (animated == TO || animated == FROM) {
-      animationTime += elapsed;
-      animationTime = std::min(1.0f, animationTime);
-      player.camera->transform->position = splineposition.at(animationTime);
-      player.camera->transform->rotation = splinerotation.at(animationTime);
-      if (animationTime == 1.0f) {
+        animationTime += elapsed;
+        animationTime = std::min(1.0f, animationTime);
+        player.camera->transform->position = splineposition.at(animationTime);
+        player.camera->transform->rotation = splinerotation.at(animationTime);
+        if (animationTime == 1.0f) {
         animationTime = 0.0f;
         if (animated == TO) {
 std::cout << "arrived" << std::endl;
@@ -442,20 +472,20 @@ std::cout << "arrived" << std::endl;
           player.camera->transform->rotation = player.defaultCameraRotation;
           player.camera->transform->parent = player.transform;
         }
-      }
+    }
     }
     // reset camera
     if (animated == THERE && !read.pressed) {
 std::cout << "there" << std::endl;
       animated = FROM;
-      animationTime = 0.0;
+        animationTime = 0.0;
       auto playerToWorld = player.transform->make_local_to_world();
       splineposition.set(0.0f, player.camera->transform->position);
       splinerotation.set(0.0f, player.camera->transform->rotation);
       splineposition.set(1.0f, playerToWorld * glm::vec4(player.defaultCameraPosition, 1.0f));
       splinerotation.set(1.0f, glm::quat(glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
     }
-
+    
     //player walking:
     {
         //combine inputs into a move:
@@ -626,42 +656,41 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     //         lines.draw(r.first,r.second);
     //     }
     // }
-
-
+    
+    
     // Draw a crosshair at the center of the screen
     {
         glDisable(GL_DEPTH_TEST);
+//        glm::vec2 center{0.0f,0.0f};
         float aspect = float(drawable_size.x) / float(drawable_size.y);
-		DrawLines lines(glm::mat4(
-			1.0f / aspect, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-		));
-
-        glm::vec2 offset(0.05f,0.05f);
-
-        glm::vec3 pv_0 = {0.0f,0.0f + offset[1],0.0f};
-        glm::vec3 pv_1 = {0.0f,0.0f - offset[1],0.0f};
-
-        glm::vec3 ph_0 = {0.0f + offset[0], 0.0f,0.0f};
-        glm::vec3 ph_1 = {0.0f - offset[1], 0.0f,0.0f};
-
-        lines.draw(pv_0,pv_1);
-        lines.draw(ph_0,ph_1);
+        DrawLines lines(glm::mat4(
+                1.0f / aspect, 0.0f, 0.0f, 0.0f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+                0.0f, 0.0f, 0.0f, 1.0f
+        ));
+        
+        glm::vec2 offset(0.05f, 0.05f);
+        
+        glm::vec3 pv_0 = {0.0f, 0.0f + offset[1], 0.0f};
+        glm::vec3 pv_1 = {0.0f, 0.0f - offset[1], 0.0f};
+        
+        glm::vec3 ph_0 = {0.0f + offset[0], 0.0f, 0.0f};
+        glm::vec3 ph_1 = {0.0f - offset[1], 0.0f, 0.0f};
+        
+        lines.draw(pv_0, pv_1);
+        lines.draw(ph_0, ph_1);
         glEnable(GL_DEPTH_TEST);
     }
     
-    
-    terminal.draw();
-    text_display.draw();
+    Draw::handle_all();
     
     GL_ERRORS();
 }
 
 
 // TODO exclude player collider?
-void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
+void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     if (!player.has_paint_ability) {
         return;
     }
@@ -699,7 +728,7 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
         } else if (wf_obj_pass_map.count(c->name)) {
             scene.colliders.remove(c);
         } else {
-            std::runtime_error("Run wireframe state");
+            throw std::runtime_error("Run wireframe state");
         }
         // If first_time_add/remove
         if (d->wireframe_info.one_time_change) {
@@ -743,8 +772,7 @@ void PlayMode::update_wireframe() {
     
     if (player.has_paint_ability) {
         // remove real object, only draw wireframe
-        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it++) {
-            auto collider = *it;
+        for (const auto &collider: wireframe_objects) {
             if (collider->name == player.name) {
                 continue;
             }
@@ -776,8 +804,7 @@ void PlayMode::update_wireframe() {
             
         }
     } else { // Paintbrush case // This is ugly code but it works..
-        for (auto it = wireframe_objects.cbegin(); it != wireframe_objects.end(); it++) {
-            auto collider = *it;
+        for (const auto &collider: wireframe_objects) {
             if (collider->name == player.name || collider->name.find("Paintbrush") == std::string::npos) {
                 continue;
             }
@@ -863,7 +890,7 @@ void PlayMode::update_wireframe() {
 // prefix_on(off)_(onetime)_xxxxx
 // on means draw full color at first
 // check if there is a prefix_on(off)_(onetime)_xxxxx_invisible
-void PlayMode::initialize_wireframe_objects(std::string prefix) {
+void PlayMode::initialize_wireframe_objects(const std::string &prefix) {
     for (const auto &c: scene.colliders) {
         if (c->name.find(prefix) != std::string::npos) {
             wireframe_objects.push_back(c);
@@ -877,7 +904,7 @@ void PlayMode::initialize_wireframe_objects(std::string prefix) {
                 //wf_obj_block.push_back(c);
                 wf_obj_block_map[c->name] = c;
             } else {
-                std::runtime_error("Unknown type of wireframe object");
+                throw std::runtime_error("Unknown type of wireframe object");
             }
             
             if (c->name.find("onetime") != std::string::npos) {
@@ -898,14 +925,14 @@ void PlayMode::initialize_wireframe_objects(std::string prefix) {
     // remove colliders in wf_obj_pass_map && colliders is currently real
     for (const auto &it: wf_obj_block_map) {
         auto d = scene.drawble_name_map[it.second->name];
-        if (d->wireframe_info.draw_frame == true) {
+        if (d->wireframe_info.draw_frame) {
             scene.colliders.remove(it.second);
         }
     }
     
-    for (auto it: wf_obj_pass_map) {
+    for (const auto &it: wf_obj_pass_map) {
         auto d = scene.drawble_name_map[it.second->name];
-        if (d->wireframe_info.draw_frame == false) {
+        if (!d->wireframe_info.draw_frame) {
             scene.colliders.remove(it.second);
         }
     }
@@ -931,7 +958,7 @@ void PlayMode::initialize_scene_metadata() {
 
 // Which mesh to lookup?
 // prefix_xxxxx
-void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes) {
+void PlayMode::initialize_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
     for (const auto &it: meshes->meshes) {
         const std::string &name = it.first;
         auto mesh = it.second;
@@ -948,7 +975,7 @@ void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes) 
 }
 
 
-void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> meshes) {
+void PlayMode::initialize_text_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
     for (const auto &it: meshes->meshes) {
         const std::string &name = it.first;
         auto mesh = it.second;
@@ -958,7 +985,7 @@ void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> mes
             auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
             auto d = scene.drawble_name_map[name];
             if (d == nullptr) {
-              continue;
+                continue;
             }
             collider->update_BBox(d->transform);
             scene.text_colliders.push_back(collider);
@@ -969,7 +996,7 @@ void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> mes
 
 
 // Item to unlock must be a collider
-void PlayMode::unlock(std::string prefix) {
+void PlayMode::unlock(const std::string &prefix) {
     
     auto c = scene.collider_name_map[player.name];
     
@@ -997,10 +1024,11 @@ void PlayMode::unlock(std::string prefix) {
 }
 
 
-std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(std::string prefix, bool use_crosshair) {
-    float ux,uy;
+std::pair<std::shared_ptr<Scene::Collider>, float>
+PlayMode::mouse_text_check(const std::string &prefix, bool use_crosshair) {
+    float ux, uy;
     
-    if (!use_crosshair){
+    if (!use_crosshair) {
         if (SDL_GetRelativeMouseMode() != SDL_FALSE)
             return std::make_pair(nullptr, 0);
         
@@ -1009,9 +1037,9 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(st
         
         y = 720 - y;
         
-        ux = (x - 640.0) / 640.0;
-        uy = (y - 360.0) / 360.0;
-    }else{
+        ux = ((float) x - 640.0f) / 640.0f;
+        uy = ((float) y - 360.0f) / 360.0f;
+    } else {
         ux = 0.0;
         uy = 0.0;
     }
@@ -1060,10 +1088,11 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(st
     return std::make_pair(intersected_collider, distance);
 }
 
-std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_check(std::string prefix, bool use_crosshair) {
-    float ux,uy;
+std::pair<std::shared_ptr<Scene::Collider>, float>
+PlayMode::mouse_collider_check(const std::string &prefix, bool use_crosshair) {
+    float ux, uy;
     
-    if (!use_crosshair){
+    if (!use_crosshair) {
         if (SDL_GetRelativeMouseMode() != SDL_FALSE)
             return std::make_pair(nullptr, 0);
         
@@ -1072,9 +1101,9 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
         
         y = 720 - y;
         
-        ux = (x - 640.0) / 640.0;
-        uy = (y - 360.0) / 360.0;
-    }else{
+        ux = ((float) x - 640.0f) / 640.0f;
+        uy = ((float) y - 360.0f) / 360.0f;
+    } else {
         ux = 0.0;
         uy = 0.0;
     }
@@ -1117,9 +1146,9 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
             }
         }
         
-
+        
     }
-
+    
     float distance = glm::length(dir.d * dir.t);
     return std::make_pair(intersected_collider, distance);
 }

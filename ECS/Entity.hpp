@@ -29,18 +29,16 @@ struct Entity {
     template<typename T, typename... Args>
     T &add_component(Args &&... args) {
         to_delete[std::type_index(typeid(T))] = [this]() {
-            // I don't just call remove_component because that invalidates the iterator in ~Entity
             std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
             entity_to_component.erase(id);
         };
         
-        std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
-        // this call to emplace looks weird but I'm pretty sure it's correct
-        return entity_to_component.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(id),
-                std::forward_as_tuple(args...)
-        ).first->second;
+        if (T::system_running) {
+            return T::to_add.emplace(id, T(args...)).first->second;
+        } else {
+            std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
+            return entity_to_component.emplace(id, T(args...)).first->second;
+        }
     }
     
     /*
@@ -60,9 +58,12 @@ struct Entity {
     template<typename T>
     void remove_component() {
         to_delete.erase(std::type_index(typeid(T)));
-        
-        std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
-        entity_to_component.erase(id);
+        if (T::system_running) {
+            T::to_delete.push_back(id);
+        } else {
+            std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
+            entity_to_component.erase(id);
+        }
     }
 
 private:
