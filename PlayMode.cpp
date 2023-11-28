@@ -369,7 +369,8 @@ PlayMode::PlayMode(SDL_Window* window)
                     SDL_SetRelativeMouseMode(SDL_TRUE);
                     return true;
                 }
-            } else if (evt.type == SDL_MOUSEMOTION) {
+            } else if (animated == NO && evt.type == SDL_MOUSEMOTION) {
+                // don't want camera to change when reading sign
                 if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
                     glm::vec2 motion = glm::vec2(
                             evt.motion.xrel / float(window_size.y),
@@ -469,7 +470,7 @@ void PlayMode::update(float elapsed) {
         if (animationTime == 1.0f) {
         animationTime = 0.0f;
         if (animated == TO) {
-std::cout << "arrived" << std::endl;
+//std::cout << "arrived" << std::endl;
           animated = THERE;
         } else {
           animated = NO;
@@ -482,7 +483,7 @@ std::cout << "arrived" << std::endl;
     }
     // reset camera
     if (animated == THERE && !read.pressed) {
-std::cout << "there" << std::endl;
+//std::cout << "there" << std::endl;
       animated = FROM;
         animationTime = 0.0;
       auto playerToWorld = player.transform->make_local_to_world();
