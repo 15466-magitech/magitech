@@ -25,7 +25,7 @@ Load<RocketColorTextureProgram> rocket_color_texture_program(LoadTagEarly, []() 
     rocket_color_texture_program_pipeline.set_uniforms = [ret]() {
         glUniform1i(ret->LIGHT_TYPE_int, 1);
         glUniform3fv(ret->LIGHT_DIRECTION_vec3, 1,
-                     glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
+                     glm::value_ptr(glm::normalize(glm::vec3(-0.5f, -1.0f, 1.0f))));
         glUniform3fv(ret->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
         glUniform3fv(ret->AMBIENT_LIGHT_ENERGY_vec3, 1,
                      glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
