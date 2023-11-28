@@ -27,6 +27,9 @@ struct TexProgram {
 	//TEXTURE0 - texture that is accessed by TexCoord
 };
 
+GLuint gen_image(glm::vec2 pos, glm::vec2 size, float u1, float v1, float u2, float v2);
+void draw_image(GLuint image, GLuint tex, glm::vec4 color, float x, float y, float x_scale, float y_scale);
+
 extern Load<TexProgram> tex_program;
 
 //For convenient scene-graph setup, copy this object:

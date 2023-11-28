@@ -131,7 +131,7 @@ RocketColorTextureProgram::RocketColorTextureProgram() {
             "	}\n"
             "   vec3 cam = normalize((inverse(toMat3(OBJECT_TO_CLIP)) * vec3(0, 0, 1)).xyz);\n"
             "   vec3 h = normalize(cam + normalize(-LIGHT_DIRECTION));\n"
-            "   float specular = pow(1.0 + dot(n, h) / 0.8, SPECULAR_SHININESS);\n" // changes made here
+            "   float specular = pow(max(dot(n, h), 0), SPECULAR_SHININESS);\n" // changes made here
             "   e += specular * SPECULAR_BRIGHTNESS;\n"
             "	vec4 albedo = texture(TEX, texCoord) * color;\n"
             "   if(wireframe){\n"
@@ -155,7 +155,7 @@ RocketColorTextureProgram::RocketColorTextureProgram() {
     OBJECT_TO_CLIP_mat4 = glGetUniformLocation(program, "OBJECT_TO_CLIP");
     OBJECT_TO_LIGHT_mat4x3 = glGetUniformLocation(program, "OBJECT_TO_LIGHT");
     NORMAL_TO_LIGHT_mat3 = glGetUniformLocation(program, "NORMAL_TO_LIGHT");
-    
+
     LIGHT_TYPE_int = glGetUniformLocation(program, "LIGHT_TYPE");
     LIGHT_LOCATION_vec3 = glGetUniformLocation(program, "LIGHT_LOCATION");
     LIGHT_DIRECTION_vec3 = glGetUniformLocation(program, "LIGHT_DIRECTION");

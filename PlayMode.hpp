@@ -28,7 +28,7 @@ typedef enum {
 } animation_t;
 
 struct PlayMode : Mode {
-    PlayMode();
+    PlayMode(SDL_Window* window);
     
     ~PlayMode() override;
     
@@ -54,7 +54,15 @@ struct PlayMode : Mode {
     float animationTime = 0.0f;
     Spline<glm::vec3> splineposition;
     Spline<glm::quat> splinerotation;
-    
+
+    GLuint depth_fb;
+    GLuint depth_tex;
+    GLuint dot_tex;
+
+    GLuint shadow_depth_fb;
+    GLuint shadow_depth_tex;
+
+    SDL_Window* window;
     //local copy of the game scene (so code can change it during gameplay):
     Scene scene;
     
@@ -84,7 +92,7 @@ struct PlayMode : Mode {
         static constexpr glm::vec3 defaultCameraRotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
 
     } player;
-    
+
     // Wireframe logics
 
     std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
@@ -98,7 +106,11 @@ struct PlayMode : Mode {
     //debug
     std::list<std::pair<glm::vec3,glm::vec3>> rays;
     //
-    
+
+    void gen_dot_texture();
+    void gen_framebuffers();
+    void resize_depth_tex();
+
     void update_wireframe();
     void update_wireframe(const std::shared_ptr<Scene::Collider>& collider);
     

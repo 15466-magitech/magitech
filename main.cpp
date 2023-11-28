@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     
     //create window:
     SDL_Window *window = SDL_CreateWindow(
-            "gp23 game5: walking simulator", //TODO: remember to set a title for your game!
+            "Tech Wiz", //TODO: remember to set a title for your game!
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
             1280, 720, //TODO: modify window size if you'd like
             SDL_WINDOW_OPENGL
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     call_load_functions();
     
     //------------ create game mode + make current --------------
-    Mode::set_current(std::make_shared<PlayMode>());
+    Mode::set_current(std::make_shared<PlayMode>(window));
     
     //------------ main loop ------------
     
