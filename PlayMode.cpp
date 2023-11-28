@@ -118,16 +118,16 @@ Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * 
     return ret;
 });
 
-PlayMode::PlayMode(SDL_Window* window)
-        : text_display(5, 75, glm::vec2(-0.50f, -0.50f), glm::vec2(1.0f, 0.2f)),
+PlayMode::PlayMode(SDL_Window *window)
+        : text_display(5, 60, glm::vec2(-0.40f, -0.45f), glm::vec2(0.8f, 0.2f)),
           terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
           scene(*artworld_scene) {
-
+    
     this->window = window;
     glGenVertexArrays(1, &image_vao);
     gen_framebuffers();
     image_vao = gen_image(glm::vec2(-1.0f, -1.0f), glm::vec2(2.0f, 2.0f), 0.0f, 0.0f, 1.0f, 1.0f);
-
+    
     // TODO: remove this test code
     {
         std::cout << "Testing basic ECS mechanics..." << std::endl;
@@ -218,14 +218,14 @@ PlayMode::PlayMode(SDL_Window* window)
         switch (command) {
             case Command::OpenSesame:
                 unlock("unlock_");
-                    //unlock("unlock_");
-                    player.has_unlock_ability = true;
-                    std::cout << "command was open sesame!\n";
+                //unlock("unlock_");
+                player.has_unlock_ability = true;
+                std::cout << "command was open sesame!\n";
                 break;
             case Command::Mirage:
                 //activate paintbrush
                 std::string pb_object_name = "col_wire_off_block_Paintbrush";
-                    if (!player.has_paint_ability) {
+                if (!player.has_paint_ability) {
                     auto pb = scene.collider_name_map[pb_object_name];
                     
                     float distance = pb->min_distance(scene.collider_name_map[player.name]);
@@ -234,7 +234,7 @@ PlayMode::PlayMode(SDL_Window* window)
                         auto d = scene.drawble_name_map[pb_object_name];
                         assert(d->wireframe_info.draw_frame);
                         d->wireframe_info.draw_frame = false;
-                            player.has_paint_ability = true;
+                        player.has_paint_ability = true;
                         scene.colliders.push_back(pb);
                         current_wireframe_objects_map.erase(pb_object_name);
                         if (d->wireframe_info.one_time_change) {
@@ -255,7 +255,6 @@ PlayMode::PlayMode(SDL_Window* window)
     player.add_component<TerminalDeactivateHandler>([this]() {
         player.add_component<EventHandler>([this](SDL_Event const &evt, glm::uvec2 const &window_size) {
             if (evt.type == SDL_KEYDOWN) {
-                text_display.deactivate();
                 if (evt.key.keysym.sym == SDLK_ESCAPE) {
                     SDL_SetRelativeMouseMode(SDL_FALSE);
                     return true;
@@ -294,58 +293,43 @@ PlayMode::PlayMode(SDL_Window* window)
                     
                     std::tie(c, distance) = mouse_collider_check("col_", true);
                     if (c) {
-                auto type = check_collider_type(c);
-                switch (type)
-                {
-                case WIREFRAME:{
-                        auto player_collider = scene.collider_name_map[player.name];
-                        if (distance < 10.0f) {
-                            // Do not update if player intersects the object
-                            if (!player_collider->intersect(c))
-                                update_wireframe(c);
+                        auto type = check_collider_type(c);
+                        switch (type) {
+                            case WIREFRAME: {
+                                auto player_collider = scene.collider_name_map[player.name];
+                                if (distance < 10.0f) {
+                                    // Do not update if player intersects the object
+                                    if (!player_collider->intersect(c))
+                                        update_wireframe(c);
+                                }
+                                break;
+                            }
+                            
+                            case DOOR: {
+                                if (player.has_unlock_ability) {
+                                    auto player_collider = scene.collider_name_map[player.name];
+                                    if (distance < 10.0f) {
+                                        // Remove it from drawables and collider datastructure
+                                        auto d = scene.drawble_name_map[c->name];
+                                        scene.drawables.remove(d);
+                                        scene.drawble_name_map.erase(c->name);
+                                        scene.colliders.remove(c);
+                                        scene.collider_name_map.erase(c->name);
+                                        break;
+                                    }
+                                }
+                                
+                            }
+                            case FOOD:
+                                break;
+                            default:
+                                break;
                         }
-                    break;
-                }
-
-                case DOOR:{
-                    if(player.has_unlock_ability){
-                        auto player_collider = scene.collider_name_map[player.name];
-                        if (distance < 10.0f) {
-                            // Remove it from drawables and collider datastructure
-                            auto d = scene.drawble_name_map[c->name];
-                            scene.drawables.remove(d);
-                            scene.drawble_name_map.erase(c->name);
-                            scene.colliders.remove(c);
-                            scene.collider_name_map.erase(c->name);
-                            break;
-                        }
-                    }
-                    
-                }
-                case FOOD:
-                    break;
-                default:
-                    break;
-                }
-
-
-
+                        
+                        
                     }
                     
                     //update_wireframe();
-                    return true;
-                } else if (evt.key.keysym.sym == SDLK_c) {
-                    std::shared_ptr<Scene::Collider> c = nullptr;
-                    float distance = 0.0;
-                    std::tie(c, distance) = mouse_text_check("text_", true);
-                    if (c) {
-                        if (text_storage->object_text_map.count(c->name)) {
-                            auto v = text_storage->object_text_map.at(c->name);
-                            text_display.text = {""};
-                            text_display.add_text(v[0]);
-                            text_display.activate();
-                        }
-                    }
                     return true;
                 }
             } else if (evt.type == SDL_KEYUP) {
@@ -388,7 +372,7 @@ PlayMode::PlayMode(SDL_Window* window)
                     pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
                     player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
                     
-            const glm::float32 DIST_TO_PLAYER = glm::length(player.defaultCameraPosition);
+                    const glm::float32 DIST_TO_PLAYER = glm::length(player.defaultCameraPosition);
                     player.camera->transform->position =
                             -player.camera->transform->rotation * glm::vec3(-1.0f, 2.0f, DIST_TO_PLAYER);
                     
@@ -415,13 +399,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 void PlayMode::update(float elapsed) {
     if (animated == NO && read.pressed && animationTime == 0.0) {
         //float distance = std::numeric_limits<float>::max();
-      float distance = player.SIGHT_DISTANCE; // can see this far
+        float distance = player.SIGHT_DISTANCE; // can see this far
         auto playerToWorld = player.transform->make_local_to_world();
         auto here = player.transform->position;
         std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
         std::string selected;
-
-      // find the closest text bearer
+        
+        // find the closest text bearer
         for (const auto &[name, mesh]: textBearers) {
             if (!endsWith(name, "_m")) {
                 continue;
@@ -442,14 +426,16 @@ void PlayMode::update(float elapsed) {
             std::string selectedCamera = textBearerCams[selected];
             auto destCamera = scene.cams[selectedCamera];
             assert(destCamera != nullptr);
-        animated = TO;
+            animated = TO;
             animationTime = 0.0f;
             auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
             //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
             auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
-        auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
-        auto startrotation = glm::quat_cast(glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
-        auto endrotation = glm::quat_cast(glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
+            auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
+            auto startrotation = glm::quat_cast(
+                    glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
+            auto endrotation = glm::quat_cast(
+                    glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
             splineposition = Spline<glm::vec3>();
             splinerotation = Spline<glm::quat>();
             splineposition.set(0.0f, startposition);
@@ -458,8 +444,8 @@ void PlayMode::update(float elapsed) {
             splinerotation.set(1.0f, endrotation);
             // now use world camera
             player.camera->transform->parent = nullptr;
-      } else {
-        std::cout << "No readable sign in range" << std::endl;
+        } else {
+            std::cout << "No readable sign in range" << std::endl;
         }
     }
     // camera animation
@@ -469,29 +455,42 @@ void PlayMode::update(float elapsed) {
         player.camera->transform->position = splineposition.at(animationTime);
         player.camera->transform->rotation = splinerotation.at(animationTime);
         if (animationTime == 1.0f) {
-        animationTime = 0.0f;
-        if (animated == TO) {
+            animationTime = 0.0f;
+            if (animated == TO) {
 //std::cout << "arrived" << std::endl;
-          animated = THERE;
-        } else {
-          animated = NO;
-          // back to player local camera
-          player.camera->transform->position = player.defaultCameraPosition;
-          player.camera->transform->rotation = player.defaultCameraRotation;
-          player.camera->transform->parent = player.transform;
+                animated = THERE;
+                std::shared_ptr<Scene::Collider> c = nullptr;
+                float distance = 0.0;
+                std::tie(c, distance) = mouse_text_check("text_", true);
+                if (c) {
+                    if (text_storage->object_text_map.count(c->name)) {
+                        auto v = text_storage->object_text_map.at(c->name);
+                        text_display.text = {""};
+                        text_display.add_text(v[0]);
+                        text_display.activate();
+                    }
+                }
+            } else {
+                animated = NO;
+                // back to player local camera
+                player.camera->transform->position = player.defaultCameraPosition;
+                player.camera->transform->rotation = player.defaultCameraRotation;
+                player.camera->transform->parent = player.transform;
+            }
         }
-    }
     }
     // reset camera
     if (animated == THERE && !read.pressed) {
 //std::cout << "there" << std::endl;
-      animated = FROM;
+        animated = FROM;
         animationTime = 0.0;
-      auto playerToWorld = player.transform->make_local_to_world();
-      splineposition.set(0.0f, player.camera->transform->position);
-      splinerotation.set(0.0f, player.camera->transform->rotation);
-      splineposition.set(1.0f, playerToWorld * glm::vec4(player.defaultCameraPosition, 1.0f));
-      splinerotation.set(1.0f, glm::quat(glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
+        auto playerToWorld = player.transform->make_local_to_world();
+        splineposition.set(0.0f, player.camera->transform->position);
+        splinerotation.set(0.0f, player.camera->transform->rotation);
+        splineposition.set(1.0f, playerToWorld * glm::vec4(player.defaultCameraPosition, 1.0f));
+        splinerotation.set(1.0f, glm::quat(
+                glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
+        text_display.deactivate();
     }
     
     //player walking:
@@ -625,23 +624,25 @@ int lastHeight = -1;
 void PlayMode::resize_depth_tex() {
     int lw = lastWidth;
     int lh = lastHeight;
-
+    
     SDL_GL_GetDrawableSize(window, &lastWidth, &lastHeight);
     if (lastWidth == lw && lastHeight == lh)
         return;
-
+    
     glm::uvec2 window_size = glm::uvec2(lastWidth, lastHeight);
-
+    
     glBindTexture(GL_TEXTURE_2D, depth_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT,
+                 GL_UNSIGNED_INT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
-
+    
     glBindTexture(GL_TEXTURE_2D, shadow_depth_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT,
+                 GL_UNSIGNED_INT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -651,11 +652,11 @@ void PlayMode::resize_depth_tex() {
 
 void PlayMode::gen_dot_texture() {
     glGenTextures(1, &dot_tex);
-
+    
     glm::uvec2 size;
     std::vector<glm::u8vec4> data;
     load_png(data_path("dot.png"), &size, &data, LowerLeftOrigin);
-
+    
     glBindTexture(GL_TEXTURE_2D, dot_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -663,28 +664,28 @@ void PlayMode::gen_dot_texture() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-
+    
     GL_ERRORS();
 }
 
 // Code derived from https://15466.courses.cs.cmu.edu/lesson/framebuffers
 void PlayMode::gen_framebuffers() {
     gen_dot_texture();
-
+    
     glGenFramebuffers(1, &depth_fb);
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
     glGenTextures(1, &depth_tex);
-
+    
     glGenFramebuffers(1, &shadow_depth_fb);
     glBindFramebuffer(GL_FRAMEBUFFER, shadow_depth_fb);
     glGenTextures(1, &shadow_depth_tex);
-
+    
     resize_depth_tex();
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, shadow_depth_fb);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_depth_tex, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -704,7 +705,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.85f, 0.85f, 0.85f)));
     glUniform3fv(lit_color_texture_program->AMBIENT_LIGHT_ENERGY_vec3, 1,
                  glm::value_ptr(glm::vec3(0.25f, 0.25f, 0.25f)));
-
+    
     int w, h;
     int wn, hn;
     SDL_GL_GetDrawableSize(window, &w, &h);
@@ -719,8 +720,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
-
-
+    
+    
     // Draw the depth framebuffer for edge detection
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -729,7 +730,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     scene.draw(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
+    
     // Draw the depth framebuffer for edge detection
     glBindFramebuffer(GL_FRAMEBUFFER, depth_fb);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -738,7 +739,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     scene.draw(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
+    
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, depth_tex);
     glActiveTexture(GL_TEXTURE2);
@@ -746,7 +747,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, shadow_depth_tex);
     glActiveTexture(GL_TEXTURE0);
-
+    
     glBindFramebuffer(GL_FRAMEBUFFER, shadow_depth_fb);
     glClear(GL_DEPTH_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -754,8 +755,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     scene.draw_shadow(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-
+    
+    
     // Draw the world
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -763,7 +764,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     scene.draw(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
+    
     // {
     //     DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
     //     for(auto r : rays){
@@ -796,9 +797,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
         lines.draw(ph_0, ph_1);
         glEnable(GL_DEPTH_TEST);
     }
-
+    
     //draw_image(image_vao, shadow_depth_tex, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.4f, 0.4f, 0.2f, 0.2f);
-
+    
     Draw::handle_all();
     GL_ERRORS();
 }
@@ -1224,8 +1225,8 @@ PlayMode::mouse_collider_check(const std::string &prefix, bool use_crosshair) {
     }
     
     
-
-
+    
+    
     // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
     glm::vec4 nearpoint{ux, uy, -1.0, 1.0};
     
@@ -1269,26 +1270,24 @@ PlayMode::mouse_collider_check(const std::string &prefix, bool use_crosshair) {
 }
 
 
-
-ColliderType PlayMode::check_collider_type(std::shared_ptr<Scene::Collider> c){
-    if(!c){
+ColliderType PlayMode::check_collider_type(std::shared_ptr<Scene::Collider> c) {
+    if (!c) {
         std::runtime_error("NULL pointer");
         return UNKNOWN;
-    }
-    else{
+    } else {
         const std::string &name = c->name;
-
-        if(name.find("col_wire")!=std::string::npos){
+        
+        if (name.find("col_wire") != std::string::npos) {
             return WIREFRAME;
-        }else if (name.find("col_unlock")!=std::string::npos){
+        } else if (name.find("col_unlock") != std::string::npos) {
             return DOOR;
-        }else if (name.find("col_food")!=std::string::npos){
+        } else if (name.find("col_food") != std::string::npos) {
             return FOOD;
-        }else{
+        } else {
             std::runtime_error("Unkonwn collider type");
             return UNKNOWN;
         }
-
+        
     }
-
+    
 }
