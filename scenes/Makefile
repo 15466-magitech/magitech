@@ -21,11 +21,11 @@ all : \
 	$(DIST)/artworld.w \
 	$(DIST)/artworld.scene \
 
-$(DIST)/artworld.pnct : ../models/artworld_scene.blend $(EXPORT_MESHES)
+$(DIST)/artworld.pnct : ../models/artworld_scene_buildout.blend $(EXPORT_MESHES)
 	$(BLENDER) --background --python $(EXPORT_MESHES) -- '$<':NotWalkMesh '$@'
 
-$(DIST)/artworld.scene : ../models/artworld_scene.blend $(EXPORT_SCENE)
+$(DIST)/artworld.scene : ../models/artworld_scene_buildout.blend $(EXPORT_SCENE)
 	$(BLENDER) --background --python $(EXPORT_SCENE) -- '$<':NotWalkMesh '$@'
 
-$(DIST)/artworld.w : ../models/artworld_scene.blend $(EXPORT_WALKMESHES)
+$(DIST)/artworld.w : ../models/artworld_scene_buildout.blend $(EXPORT_WALKMESHES)
 	$(BLENDER) --background --python $(EXPORT_WALKMESHES) -- '$<':WalkMeshes '$@'
