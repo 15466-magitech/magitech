@@ -14,6 +14,9 @@
 
 #include "GL.hpp"
 
+#include "Load.hpp"
+#include "Mesh.hpp"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -24,6 +27,12 @@
 #include <vector>
 #include <unordered_map>
 #include <map>
+
+
+typedef enum{
+	ARTSCENE,
+	FOODSCENE
+} scene_type;
 
 struct Scene {
 	struct Transform {
@@ -57,6 +66,10 @@ struct Scene {
 			bool draw_frame = false;
 			bool one_time_change = false;
 		} wireframe_info;
+
+		struct{
+			scene_type type;
+		} scene_info;
 
         struct {
             glm::vec3 specular_brightness = glm::vec3(0.0f);
@@ -188,6 +201,16 @@ struct Scene {
 	std::list<std::shared_ptr<Collider>> text_colliders;
 	std::map<std::string, std::shared_ptr<Collider>> textcollider_name_map;
 
+
+	// Wireframe logics
+
+    std::list<std::shared_ptr<Collider>> wireframe_objects;
+    std::unordered_map<std::string, std::shared_ptr<Collider>> current_wireframe_objects_map;
+    //std::list<std::shared_ptr<Scene::Collider>> wf_obj_pass; // Object on walkmesh, blocked by invisible bbox when it's wireframe
+    std::unordered_map<std::string, std::shared_ptr<Collider>> wf_obj_pass_map;
+    //std::list<std::shared_ptr<Scene::Collider>> wf_obj_block; // Normal object, blocked when it's real by bbox
+    std::unordered_map<std::string, std::shared_ptr<Collider>> wf_obj_block_map;
+
 	//The "draw" function provides a convenient way to pass all the things in a scene to OpenGL:
 	void draw(Camera const &camera, bool draw_frame = false) const;
 
@@ -216,4 +239,14 @@ struct Scene {
 	Scene &operator=(Scene const &); //...as scene = scene
 	//... as a set() function that optionally returns the transform->transform mapping:
 	void set(Scene const &, std::unordered_map< Transform const *, Transform * > *transform_map = nullptr);
+
+
+
+	//initilization functions
+	void initialize_wireframe_objects(std::string prefix);
+    void initialize_scene_metadata();
+    
+    void initialize_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
+
+    void initialize_text_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
 };

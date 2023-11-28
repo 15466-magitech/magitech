@@ -2,6 +2,7 @@
 
 #include "LitColorTextureProgram.hpp"
 #include "RocketColorTextureProgram.hpp"
+#include "ColorTextureProgram.hpp"
 
 #include "DrawLines.hpp"
 #include "Mesh.hpp"
@@ -21,6 +22,8 @@
 
 GLuint artworld_meshes_for_lit_color_texture_program = 0;
 GLuint artworld_meshes_for_rocket_color_texture_program = 0;
+GLuint foodworld_meshes_for_lit_color_texture_program = 0;
+GLuint foodworld_meshes_for_rocket_color_texture_program = 0;
 GLuint textcube_meshes_for_lit_color_texture_program = 0;
 GLuint wizard_meshes_for_lit_color_texture_program = 0;
 
@@ -39,10 +42,37 @@ bool endsWith(const std::string& str, const std::string& suffix) {
   return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
 
+// Initialize Drwable datastructure
+
+
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     artworld_meshes_for_rocket_color_texture_program = ret->make_vao_for_program(rocket_color_texture_program->program);
+
+    // register text bearers and their cameras
+    for (const auto &[name, mesh] : ret->meshes) {
+      if (name.rfind("text_", 0) != std::string::npos) {
+std::cout << "Found sign: " << name << std::endl;
+        if (!endsWith(name, "_m")) {
+          std::cerr << "Sign mesh " << name << " doesn't end in _m" << std::endl;
+        } else {
+          textBearers[name] = &mesh;
+          std::string camname = name;
+          camname.back() = 'c';
+          textBearerCams[name] = camname;
+        }
+      }
+    }
+
+    return ret;
+});
+
+//debug use
+Load<MeshBuffer> foodworld_meshes(LoadTagDefault,[]() -> MeshBuffer const * {
+    MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
+    foodworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+    foodworld_meshes_for_rocket_color_texture_program = ret->make_vao_for_program(rocket_color_texture_program->program);
 
     // register text bearers and their cameras
     for (const auto &[name, mesh] : ret->meshes) {
@@ -105,6 +135,44 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
                 drawable->pipeline.count = mesh.count;
                 drawable->wireframe_info.draw_frame = false;
                 drawable->wireframe_info.one_time_change = false;
+                drawable->scene_info.type = ARTSCENE;
+            });
+});
+
+
+Load<Scene> foodworld_scene(LoadTagDefault,[]() -> Scene const * {
+    return new Scene(
+            data_path("artworld.scene"),
+            [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
+                // keep transforms available
+                nameToTransform[mesh_name] = transform;
+
+                if (mesh_name == "Player")
+                    return;
+                
+                Mesh const &mesh = foodworld_meshes->lookup(mesh_name);
+                
+                scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
+                std::shared_ptr<Scene::Drawable> &drawable = scene.drawables.back();
+                
+                if (foodworld_meshes->lookup_collection(mesh_name) == "Rocket") {
+                    //drawable->pipeline = lit_color_texture_program_pipeline;
+                    //drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
+                    drawable->pipeline = rocket_color_texture_program_pipeline;
+                    drawable->pipeline.vao = artworld_meshes_for_rocket_color_texture_program;
+                    drawable->specular_info.shininess = 10.0;
+                } else {
+                    drawable->pipeline = lit_color_texture_program_pipeline;
+                    drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
+                    drawable->specular_info.shininess = 10.0;
+                }
+                
+                drawable->pipeline.type = mesh.type;
+                drawable->pipeline.start = mesh.start;
+                drawable->pipeline.count = mesh.count;
+                drawable->wireframe_info.draw_frame = false;
+                drawable->wireframe_info.one_time_change = false;
+                drawable->scene_info.type = FOODSCENE;
             });
 });
 
@@ -115,10 +183,10 @@ Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * 
     return ret;
 });
 
+
 PlayMode::PlayMode()
         : terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)),
-          text_display(5, 75, glm::vec2(-0.50f, -0.50f), glm::vec2(1.0f, 0.2f)),
-          scene(*artworld_scene) {
+          text_display(5, 75, glm::vec2(-0.50f, -0.50f), glm::vec2(1.0f, 0.2f)){
     // TODO: remove this test code
     std::cout << "Testing basic ECS mechanics..." << std::endl;
     {
@@ -141,37 +209,47 @@ PlayMode::PlayMode()
         std::cout << "spline ok" << std::endl;
     }
     
-    //create a player transform:
-    scene.transforms.emplace_back();
+
+    initialize_scene(artworld_scene,artworld_meshes,ARTSCENE);
+    initialize_scene(foodworld_scene,foodworld_meshes,FOODSCENE);
+
+
+    scene = scene_map[ARTSCENE];
+
+    initialize_player();
     
-    for (auto &t: scene.transforms) {
+}
+
+
+PlayMode::~PlayMode() = default;
+
+
+
+
+void PlayMode::initialize_scene(Load<Scene> scene_to_copy, Load<MeshBuffer> meshbuffer_param, scene_type scene_param_type){
+    
+    std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(*scene_to_copy);
+
+
+    //create a player transform:
+    //new_scene->transforms.emplace_back();
+
+    Scene::Transform *player_transform = nullptr;
+    
+    for (auto &t: new_scene->transforms) {
         if (t.name == player.name) {
-            player.transform = &t;
+            player_transform = &t;
+            break;
         }
     }
-    //player.transform = &scene.transforms.back();
-    
-    //create a player camera attached to a child of the player transform:
-    scene.transforms.emplace_back();
-    scene.cameras.emplace_back(&scene.transforms.back());
-    player.camera = &scene.cameras.back();
-    player.camera->fovy = glm::radians(60.0f);
-    player.camera->near = 0.01f;
-    player.camera->transform->parent = player.transform;
-    player.camera->transform->name = "player_c";
-    scene.cams["player_c"] = player.camera;
-    
-    player.camera->transform->position = player.defaultCameraPosition;
-    player.camera->transform->rotation = player.defaultCameraRotation;
-    //glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    
-    //start player walking at nearest walk point:
-    player.at = walkmesh->nearest_walk_point(player.transform->position);
-    
-    Scene::Transform *transform = player.transform;
+
+    if(player_transform == nullptr){
+        std::runtime_error("Player transform doesn't exist in scene file");
+    }
+
     Mesh const &mesh = wizard_meshes->lookup("wizard");
-    scene.drawables.emplace_back(std::make_shared<Scene::Drawable>(transform));
-    std::shared_ptr<Scene::Drawable> wizard_drawable = scene.drawables.back();
+    new_scene->drawables.emplace_back(std::make_shared<Scene::Drawable>(player_transform));
+    std::shared_ptr<Scene::Drawable> wizard_drawable = new_scene->drawables.back();
     
     wizard_drawable->pipeline = lit_color_texture_program_pipeline;
     
@@ -181,14 +259,46 @@ PlayMode::PlayMode()
     wizard_drawable->pipeline.count = mesh.count;
     wizard_drawable->specular_info.shininess = 10.0f;
     wizard_drawable->specular_info.specular_brightness = glm::vec3(1.0f, 0.9f, 0.7f);
+    wizard_drawable->scene_info.type = scene_param_type;
     
-    initialize_scene_metadata();
-    initialize_collider("col_", artworld_meshes);
-    initialize_wireframe_objects("col_wire");
-    initialize_text_collider("text_", artworld_meshes);
+    new_scene->initialize_scene_metadata();
+    new_scene->initialize_collider("col_", meshbuffer_param);
+    new_scene->initialize_wireframe_objects("col_wire");
+    new_scene->initialize_text_collider("text_", meshbuffer_param);
+
+    scene_map[scene_param_type] = new_scene;
 }
 
-PlayMode::~PlayMode() = default;
+
+void PlayMode::initialize_player(){
+        //player.transform = &scene->transforms.back();
+    //look up player transform
+    for (auto &t: scene->transforms) {
+        if (t.name == player.name) {
+            player.transform = &t;
+            break;
+        }
+    }
+    
+    //create a player camera attached to a child of the player transform:
+    scene->transforms.emplace_back();
+    scene->cameras.emplace_back(&scene->transforms.back());
+    player.camera = &scene->cameras.back();
+    player.camera->fovy = glm::radians(60.0f);
+    player.camera->near = 0.01f;
+    player.camera->transform->parent = player.transform;
+    player.camera->transform->name = "player_c";
+    scene->cams["player_c"] = player.camera;
+    
+    player.camera->transform->position = player.defaultCameraPosition;
+    player.camera->transform->rotation = player.defaultCameraRotation;
+    //glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    
+    //start player walking at nearest walk point:
+    player.at = walkmesh->nearest_walk_point(player.transform->position);
+    player.on_walkmesh = true;
+
+}
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
     if (evt.type == SDL_KEYDOWN) {
@@ -213,21 +323,21 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                 {
                     std::string pb_object_name = "col_wire_off_block_Paintbrush";
                     if (!player.has_paint_ability) {
-                        auto pb = scene.collider_name_map[pb_object_name];
+                        auto pb = scene->collider_name_map[pb_object_name];
                         
-                        float distance = pb->min_distance(scene.collider_name_map[player.name]);
+                        float distance = pb->min_distance(scene->collider_name_map[player.name]);
                         
                         if (distance < 10) {
-                            auto d = scene.drawble_name_map[pb_object_name];
+                            auto d = scene->drawble_name_map[pb_object_name];
                             assert(d->wireframe_info.draw_frame);
                             d->wireframe_info.draw_frame = false;
                             player.has_paint_ability = true;
-                            scene.colliders.push_back(pb);
-                            current_wireframe_objects_map.erase(pb_object_name);
+                            scene->colliders.push_back(pb);
+                            scene->current_wireframe_objects_map.erase(pb_object_name);
                             if (d->wireframe_info.one_time_change) {
-                                wireframe_objects.remove(pb);
-                                wf_obj_block_map.erase(pb_object_name);
-                                wf_obj_pass_map.erase(pb_object_name);
+                                scene->wireframe_objects.remove(pb);
+                                scene->wf_obj_block_map.erase(pb_object_name);
+                                scene->wf_obj_pass_map.erase(pb_object_name);
                                 
                             }
                         }
@@ -274,7 +384,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                 switch (type)
                 {
                 case WIREFRAME:{
-                    auto player_collider = scene.collider_name_map[player.name];
+                    auto player_collider = scene->collider_name_map[player.name];
                     if (distance < 10.0f) {
                         // Do not update if player intersects the object
                         if (!player_collider->intersect(c))
@@ -285,14 +395,14 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
                 case DOOR:{
                     if(player.has_unlock_ability){
-                        auto player_collider = scene.collider_name_map[player.name];
+                        auto player_collider = scene->collider_name_map[player.name];
                         if (distance < 10.0f) {
                             // Remove it from drawables and collider datastructure
-                            auto d = scene.drawble_name_map[c->name];
-                            scene.drawables.remove(d);
-                            scene.drawble_name_map.erase(c->name);
-                            scene.colliders.remove(c);
-                            scene.collider_name_map.erase(c->name);
+                            auto d = scene->drawble_name_map[c->name];
+                            scene->drawables.remove(d);
+                            scene->drawble_name_map.erase(c->name);
+                            scene->colliders.remove(c);
+                            scene->collider_name_map.erase(c->name);
                             break;
                         }               
                     }
@@ -322,6 +432,17 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
                 }
             }
             return true;
+        } else if (evt.key.keysym.sym == SDLK_j){
+            get_off_walkmesh();
+            set_bouncing_spline();
+        } 
+        //debug scene change
+        else if (evt.key.keysym.sym == SDLK_DELETE){
+            is_changing_scene = true;
+            start = std::chrono::system_clock::now();
+            //change to foodworld?
+            scene = scene_map[FOODSCENE];
+            initialize_player();
         }
     } else if (evt.type == SDL_KEYUP) {
         if (evt.key.keysym.sym == SDLK_a) {
@@ -404,7 +525,7 @@ std::cout << "distance: " << newdistance << " name: " << name << std::endl;
 std::cout << "selected: " << selected << std::endl;
         assert(selected.back() == 'm');
         std::string selectedCamera = textBearerCams[selected];
-        auto destCamera = scene.cams[selectedCamera];
+        auto destCamera = scene->cams[selectedCamera];
         assert(destCamera != nullptr);
         animated = TO;
         animationTime = 0.0f;
@@ -452,126 +573,146 @@ std::cout << "there" << std::endl;
       auto playerToWorld = player.transform->make_local_to_world();
       splineposition.set(0.0f, player.camera->transform->position);
       splinerotation.set(0.0f, player.camera->transform->rotation);
+      splinerotation.set(0.0f, player.camera->transform->rotation);
       splineposition.set(1.0f, playerToWorld * glm::vec4(player.defaultCameraPosition, 1.0f));
       splinerotation.set(1.0f, glm::quat(glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
     }
 
     //player walking:
     {
-        //combine inputs into a move:
-        constexpr float PlayerSpeed = 3.0f;
-        auto move = glm::vec2(0.0f);
-        if (left.pressed && !right.pressed) move.x = -1.0f;
-        if (!left.pressed && right.pressed) move.x = 1.0f;
-        if (down.pressed && !up.pressed) move.y = -1.0f;
-        if (!down.pressed && up.pressed) move.y = 1.0f;
-        
-        //make it so that moving diagonally doesn't go faster:
-        if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
-        
-        //get move in world coordinate system:
-        glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
-        
-        //Collision
-        {
-            auto c = scene.collider_name_map[player.name];
-            bool has_collision = false;
+
+        if(player.on_walkmesh){
+            //combine inputs into a move:
+            constexpr float PlayerSpeed = 3.0f;
+            auto move = glm::vec2(0.0f);
+            if (left.pressed && !right.pressed) move.x = -1.0f;
+            if (!left.pressed && right.pressed) move.x = 1.0f;
+            if (down.pressed && !up.pressed) move.y = -1.0f;
+            if (!down.pressed && up.pressed) move.y = 1.0f;
             
+            //make it so that moving diagonally doesn't go faster:
+            if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
             
-            // If there is collision, reverse the remain vector at the collision direction?
-            int idx = -1;
-            float overlap = std::numeric_limits<float>::infinity();
+            //get move in world coordinate system:
+            glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
             
+            //Collision
+            {
+                auto c = scene->collider_name_map[player.name];
+                bool has_collision = false;
+                
+                
+                // If there is collision, reverse the remain vector at the collision direction?
+                int idx = -1;
+                float overlap = std::numeric_limits<float>::infinity();
+                
+                
+                for (const auto &collider: scene->colliders) {
+                    if (collider->name == player.name) {
+                        continue;
+                    } else {
+                        if (c->intersect(collider)) {
+                            has_collision = true;
+                            // Only one collision at a time?
+                            std::tie(idx, overlap) = c->least_collison_axis(collider);
+                            break;
+                        }
+                    }
+                }
+                
+                if (has_collision) {
+                    remain[idx] += overlap;
+                }
+            }
             
-            for (const auto &collider: scene.colliders) {
-                if (collider->name == player.name) {
-                    continue;
+            //using a for() instead of a while() here so that if walkpoint gets stuck in
+            // some awkward case, code will not infinite loop:
+            for (uint32_t iter = 0; iter < 10; ++iter) {
+                if (remain == glm::vec3(0.0f)) break;
+                WalkPoint end;
+                float time;
+                walkmesh->walk_in_triangle(player.at, remain, &end, &time);
+                player.at = end;
+                if (time == 1.0f) {
+                    //finished within triangle:
+                    remain = glm::vec3(0.0f);
+                    break;
+                }
+                //some step remains:
+                remain *= (1.0f - time);
+                //try to step over edge:
+                glm::quat rotation;
+                if (walkmesh->cross_edge(player.at, &end, &rotation)) {
+                    //stepped to a new triangle:
+                    player.at = end;
+                    //rotate step to follow surface:
+                    remain = rotation * remain;
                 } else {
-                    if (c->intersect(collider)) {
-                        has_collision = true;
-                        // Only one collision at a time?
-                        std::tie(idx, overlap) = c->least_collison_axis(collider);
-                        break;
+                    //ran into a wall, bounce / slide along it:
+                    glm::vec3 const &a = walkmesh->vertices[player.at.indices.x];
+                    glm::vec3 const &b = walkmesh->vertices[player.at.indices.y];
+                    glm::vec3 const &c = walkmesh->vertices[player.at.indices.z];
+                    glm::vec3 along = glm::normalize(b - a);
+                    glm::vec3 normal = glm::normalize(glm::cross(b - a, c - a));
+                    glm::vec3 in = glm::cross(normal, along);
+                    
+                    //check how much 'remain' is pointing out of the triangle:
+                    float d = glm::dot(remain, in);
+                    if (d < 0.0f) {
+                        //bounce off of the wall:
+                        remain += (-1.25f * d) * in;
+                    } else {
+                        //if it's just pointing along the edge, bend slightly away from wall:
+                        remain += 0.01f * d * in;
                     }
                 }
             }
             
-            if (has_collision) {
-                remain[idx] += overlap;
+            if (remain != glm::vec3(0.0f)) {
+                std::cout << "NOTE: code used full iteration budget for walking." << std::endl;
             }
-        }
-        
-        //using a for() instead of a while() here so that if walkpoint gets stuck in
-        // some awkward case, code will not infinite loop:
-        for (uint32_t iter = 0; iter < 10; ++iter) {
-            if (remain == glm::vec3(0.0f)) break;
-            WalkPoint end;
-            float time;
-            walkmesh->walk_in_triangle(player.at, remain, &end, &time);
-            player.at = end;
-            if (time == 1.0f) {
-                //finished within triangle:
-                remain = glm::vec3(0.0f);
-                break;
-            }
-            //some step remains:
-            remain *= (1.0f - time);
-            //try to step over edge:
-            glm::quat rotation;
-            if (walkmesh->cross_edge(player.at, &end, &rotation)) {
-                //stepped to a new triangle:
-                player.at = end;
-                //rotate step to follow surface:
-                remain = rotation * remain;
-            } else {
-                //ran into a wall, bounce / slide along it:
-                glm::vec3 const &a = walkmesh->vertices[player.at.indices.x];
-                glm::vec3 const &b = walkmesh->vertices[player.at.indices.y];
-                glm::vec3 const &c = walkmesh->vertices[player.at.indices.z];
-                glm::vec3 along = glm::normalize(b - a);
-                glm::vec3 normal = glm::normalize(glm::cross(b - a, c - a));
-                glm::vec3 in = glm::cross(normal, along);
-                
-                //check how much 'remain' is pointing out of the triangle:
-                float d = glm::dot(remain, in);
-                if (d < 0.0f) {
-                    //bounce off of the wall:
-                    remain += (-1.25f * d) * in;
-                } else {
-                    //if it's just pointing along the edge, bend slightly away from wall:
-                    remain += 0.01f * d * in;
-                }
-            }
-        }
-        
-        if (remain != glm::vec3(0.0f)) {
-            std::cout << "NOTE: code used full iteration budget for walking." << std::endl;
-        }
-        
-        //update player's position to respect walking:
-        player.transform->position = walkmesh->to_world_point(player.at);
-        
-        { //update player's rotation to respect local (smooth) up-vector:
             
-            glm::quat adjust = glm::rotation(
-                    player.transform->rotation * glm::vec3(0.0f, 0.0f, 1.0f), //current up vector
-                    //walkmesh->to_world_smooth_normal(player.at) //smoothed up vector at walk location
-                    glm::vec3(0.0, 0.0, 1.0)
-            );
-            player.transform->rotation = glm::normalize(adjust * player.transform->rotation);
-        }
-        
-        /*
-        glm::mat4x3 frame = camera->transform->make_local_to_parent();
-        glm::vec3 right = frame[0];
-        //glm::vec3 up = frame[1];
-        glm::vec3 forward = -frame[2];
+            //update player's position to respect walking:
+            player.transform->position = walkmesh->to_world_point(player.at);
+            
+            { //update player's rotation to respect local (smooth) up-vector:
+                
+                glm::quat adjust = glm::rotation(
+                        player.transform->rotation * glm::vec3(0.0f, 0.0f, 1.0f), //current up vector
+                        //walkmesh->to_world_smooth_normal(player.at) //smoothed up vector at walk location
+                        glm::vec3(0.0, 0.0, 1.0)
+                );
+                player.transform->rotation = glm::normalize(adjust * player.transform->rotation);
+            }
+            
+            /*
+            glm::mat4x3 frame = camera->transform->make_local_to_parent();
+            glm::vec3 right = frame[0];
+            //glm::vec3 up = frame[1];
+            glm::vec3 forward = -frame[2];
 
-        camera->transform->position += move.x * right + move.y * forward;
-        */
+            camera->transform->position += move.x * right + move.y * forward;
+            */
+        } else{
+            // Bouncing logic
+            constexpr float PlayerSpeed = 3.0f;
+            player.interpolation_time += PlayerSpeed * elapsed;
+            auto new_pos = player.player_bounce_spline.at(player.interpolation_time);
+            player.transform->position = new_pos;
+
+            // Get back to walkmesh mode as we finish the interpolation
+            if (player.interpolation_time >= 1.0){
+                player.interpolation_time = 0.0;
+                player.on_walkmesh = true;
+                player.at = walkmesh->nearest_walk_point(player.transform->position);
+                player.transform->position = walkmesh->to_world_point(player.at);
+            }
+        }
+
+       
     }
     
-    auto bbox = scene.collider_name_map[player.name];
+    auto bbox = scene->collider_name_map[player.name];
     bbox->update_BBox(player.transform);
     
     //reset button press counters:
@@ -582,6 +723,147 @@ std::cout << "there" << std::endl;
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
+    if (is_changing_scene){
+        
+
+        glDisable(GL_DEPTH_TEST);
+        float aspect = float(drawable_size.x) / float(drawable_size.y);
+		DrawLines lines(glm::mat4(
+			1.0f / aspect, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		));
+
+        //Draw a black screen?
+        {
+            static GLuint tex = 0;
+            if (tex == 0) {
+                glGenTextures(1, &tex);
+
+                glBindTexture(GL_TEXTURE_2D, tex);
+                std::vector< glm::u8vec4 > tex_data{
+                    glm::u8vec4(0x00, 0x00, 0x00, 0xff), glm::u8vec4(0x00, 0x00, 0x00, 0xff),
+                    glm::u8vec4(0x00, 0x00, 0x00, 0xff), glm::u8vec4(0x00, 0x00, 0x00, 0xff)
+                };
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data.data());
+
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+
+            static GLuint buffer = 0;
+            if (buffer == 0) {
+                glGenBuffers(1, &buffer);
+                glBindBuffer(GL_ARRAY_BUFFER, buffer);
+                //actually nothing to do right now just wanted to bind it for illustrative purposes
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+            }
+
+            struct Vert {
+                Vert(glm::vec3 const &position_, glm::vec2 const &tex_coord_) : position(position_), tex_coord(tex_coord_) { }
+                glm::vec3 position;
+                glm::vec2 tex_coord;
+            };
+            static_assert(sizeof(Vert) == 20, "Vert is packed");
+
+            auto &program = color_texture_program;
+
+            static GLuint vao = 0;
+            if (vao == 0) {
+                //based on PPU466.cpp
+
+                glGenVertexArrays(1, &vao);
+                glBindVertexArray(vao);
+
+                glBindBuffer(GL_ARRAY_BUFFER, buffer);
+
+                glVertexAttribPointer(
+                    program->Position_vec4, //attribute
+                    3, //size
+                    GL_FLOAT, //type
+                    GL_FALSE, //normalized
+                    sizeof(Vert), //stride
+                    (GLbyte *)0 + offsetof(Vert, position) //offset
+                );
+                glEnableVertexAttribArray(program->Position_vec4);
+
+                glVertexAttribPointer(
+                    program->TexCoord_vec2, //attribute
+                    2, //size
+                    GL_FLOAT, //type
+                    GL_FALSE, //normalized
+                    sizeof(Vert), //stride
+                    (GLbyte *)0 + offsetof(Vert, tex_coord) //offset
+                );
+                glEnableVertexAttribArray(program->TexCoord_vec2);
+
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+                glBindVertexArray(0);
+            }
+
+
+            //actually draw some textured quads!
+            std::vector< Vert > attribs;
+
+            attribs.emplace_back(glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec2(0.0f, 0.0f));
+            attribs.emplace_back(glm::vec3(-1.0f,  1.0f, 0.0f), glm::vec2(0.0f, 2.0f));
+            attribs.emplace_back(glm::vec3( 1.0f, -1.0f, 0.0f), glm::vec2(1.0f, 0.0f));
+            attribs.emplace_back(glm::vec3( 1.0f,  1.0f, 0.0f), glm::vec2(1.0f, 2.0f));
+
+            glBindBuffer(GL_ARRAY_BUFFER, buffer);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(Vert) * attribs.size(), attribs.data(), GL_STREAM_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+            //as per Scene::draw -
+            glUseProgram(program->program);
+            glUniformMatrix4fv(program->OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+
+            glBindTexture(GL_TEXTURE_2D, tex);
+
+
+            glDisable(GL_DEPTH_TEST);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+            glBindVertexArray(vao);
+
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, attribs.size());
+
+            glBindVertexArray(0);
+
+
+            glDisable(GL_BLEND);
+            glEnable(GL_DEPTH_TEST);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            glUseProgram(0);
+
+            GL_ERRORS();
+        }
+
+        end = std::chrono::system_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+
+        if (duration.count() > 3){
+            is_changing_scene = false;
+        }
+
+        glEnable(GL_DEPTH_TEST);
+
+        return;
+    }
+
+
+
+
+
     //update camera aspect ratio for drawable:
     player.camera->aspect = float(drawable_size.x) / float(drawable_size.y);
     
@@ -614,9 +896,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     
     
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    scene.draw(*player.camera, false);
+    scene->draw(*player.camera, false);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    scene.draw(*player.camera, true);
+    scene->draw(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     
     
@@ -673,7 +955,7 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
     
     {
         bool found = false;
-        for (const auto &it: wireframe_objects) {
+        for (const auto &it: scene->wireframe_objects) {
             if (it->name == c->name) {
                 found = true;
             }
@@ -689,40 +971,40 @@ void PlayMode::update_wireframe(std::shared_ptr<Scene::Collider> c) {
         }
     }
     
-    bool is_current_wireframe = scene.drawble_name_map[c->name]->wireframe_info.draw_frame;
-    auto d = scene.drawble_name_map[c->name];
+    bool is_current_wireframe = scene->drawble_name_map[c->name]->wireframe_info.draw_frame;
+    auto d = scene->drawble_name_map[c->name];
     
     if (is_current_wireframe) {
-        current_wireframe_objects_map.erase(c->name);
-        if (wf_obj_block_map.count(c->name)) {
-            scene.colliders.push_back(c);
-        } else if (wf_obj_pass_map.count(c->name)) {
-            scene.colliders.remove(c);
+        scene->current_wireframe_objects_map.erase(c->name);
+        if (scene->wf_obj_block_map.count(c->name)) {
+            scene->colliders.push_back(c);
+        } else if (scene->wf_obj_pass_map.count(c->name)) {
+            scene->colliders.remove(c);
         } else {
             std::runtime_error("Run wireframe state");
         }
         // If first_time_add/remove
         if (d->wireframe_info.one_time_change) {
-            wireframe_objects.remove(c);
-            wf_obj_block_map.erase(c->name);
-            wf_obj_pass_map.erase(c->name);
+            scene->wireframe_objects.remove(c);
+            scene->wf_obj_block_map.erase(c->name);
+            scene->wf_obj_pass_map.erase(c->name);
         }
         d->wireframe_info.draw_frame = false;
     } else {
         // remove bounding box
-        if (wf_obj_block_map.count(c->name)) {
-            scene.colliders.remove(c);
-        } else if (wf_obj_pass_map.count(c->name)) {
-            scene.colliders.push_back(c);
+        if (scene->wf_obj_block_map.count(c->name)) {
+            scene->colliders.remove(c);
+        } else if (scene->wf_obj_pass_map.count(c->name)) {
+            scene->colliders.push_back(c);
         }
-        current_wireframe_objects_map[c->name] = c;
+        scene->current_wireframe_objects_map[c->name] = c;
         
         // If first_time_add/remove
         if (d->wireframe_info.one_time_change) {
-            wireframe_objects.remove(c);
-            wf_obj_block_map.erase(c->name);
-            wf_obj_pass_map.erase(c->name);
-            current_wireframe_objects_map.erase(c->name);
+            scene->wireframe_objects.remove(c);
+            scene->wf_obj_block_map.erase(c->name);
+            scene->wf_obj_pass_map.erase(c->name);
+            scene->current_wireframe_objects_map.erase(c->name);
         }
         d->wireframe_info.draw_frame = true;
     }
@@ -739,11 +1021,11 @@ void PlayMode::update_wireframe() {
     
     // Test the frame thing?
     
-    auto c = scene.collider_name_map[player.name];
+    auto c = scene->collider_name_map[player.name];
     
     if (player.has_paint_ability) {
         // remove real object, only draw wireframe
-        for (auto it = wireframe_objects.begin(); it != wireframe_objects.end(); it++) {
+        for (auto it = scene->wireframe_objects.begin(); it != scene->wireframe_objects.end(); it++) {
             auto collider = *it;
             if (collider->name == player.name) {
                 continue;
@@ -752,7 +1034,7 @@ void PlayMode::update_wireframe() {
             if (dist < 0.5) {
                 std::string name = collider->name;
                 // If this is already a wireframe
-                if (!current_wireframe_objects_map.count(name)) {
+                if (!scene->current_wireframe_objects_map.count(name)) {
                     collider_to_wireframe = collider;
                     name_to_wireframe = name;
                     break;
@@ -763,7 +1045,7 @@ void PlayMode::update_wireframe() {
         // turn wireframe object real
         if (collider_to_wireframe == nullptr) {
             // Add it back
-            for (const auto &it: current_wireframe_objects_map) {
+            for (const auto &it: scene->current_wireframe_objects_map) {
                 const std::string &name = it.first;
                 auto collider = it.second;
                 auto dist = c->min_distance(collider);
@@ -776,7 +1058,7 @@ void PlayMode::update_wireframe() {
             
         }
     } else { // Paintbrush case // This is ugly code but it works..
-        for (auto it = wireframe_objects.cbegin(); it != wireframe_objects.end(); it++) {
+        for (auto it = scene->wireframe_objects.cbegin(); it != scene->wireframe_objects.end(); it++) {
             auto collider = *it;
             if (collider->name == player.name || collider->name.find("Paintbrush") == std::string::npos) {
                 continue;
@@ -785,7 +1067,7 @@ void PlayMode::update_wireframe() {
             if (dist < 0.5) {
                 std::string name = collider->name;
                 // If this is already a wireframe
-                if (!current_wireframe_objects_map.count(name)) {
+                if (!scene->current_wireframe_objects_map.count(name)) {
                     collider_to_wireframe = collider;
                     name_to_wireframe = name;
                     player.has_paint_ability = true;
@@ -796,7 +1078,7 @@ void PlayMode::update_wireframe() {
         }
         if (collider_to_wireframe == nullptr) {
             // Add it back
-            for (const auto &it: current_wireframe_objects_map) {
+            for (const auto &it: scene->current_wireframe_objects_map) {
                 const std::string &name = it.first;
                 if (name.find("Paintbrush") == std::string::npos) {
                     continue;
@@ -818,42 +1100,42 @@ void PlayMode::update_wireframe() {
     
     if (collider_to_real) {
         // Add back bounding box
-        if (wf_obj_block_map.count(name_to_real)) {
-            scene.colliders.push_back(collider_to_real);
+        if (scene->wf_obj_block_map.count(name_to_real)) {
+            scene->colliders.push_back(collider_to_real);
         }
             // remove virtual bounding box
-        else if (wf_obj_pass_map.count(name_to_real)) {
-            scene.colliders.remove(collider_to_real);
+        else if (scene->wf_obj_pass_map.count(name_to_real)) {
+            scene->colliders.remove(collider_to_real);
         }
         
-        current_wireframe_objects_map.erase(name_to_real);
-        auto d = scene.drawble_name_map[name_to_real];
+        scene->current_wireframe_objects_map.erase(name_to_real);
+        auto d = scene->drawble_name_map[name_to_real];
         // If first_time_add/remove
         if (d->wireframe_info.one_time_change) {
-            wireframe_objects.remove(collider_to_real);
-            wf_obj_block_map.erase(name_to_real);
-            wf_obj_pass_map.erase(name_to_real);
+            scene->wireframe_objects.remove(collider_to_real);
+            scene->wf_obj_block_map.erase(name_to_real);
+            scene->wf_obj_pass_map.erase(name_to_real);
         }
         d->wireframe_info.draw_frame = false;
     }
     
     if (collider_to_wireframe) {
         // remove bounding box
-        if (wf_obj_block_map.count(name_to_wireframe)) {
-            scene.colliders.remove(collider_to_wireframe);
-        } else if (wf_obj_pass_map.count(name_to_wireframe)) {
-            scene.colliders.push_back(collider_to_wireframe);
+        if (scene->wf_obj_block_map.count(name_to_wireframe)) {
+            scene->colliders.remove(collider_to_wireframe);
+        } else if (scene->wf_obj_pass_map.count(name_to_wireframe)) {
+            scene->colliders.push_back(collider_to_wireframe);
         }
         
         
-        current_wireframe_objects_map[name_to_wireframe] = collider_to_wireframe;
-        auto d = scene.drawble_name_map[name_to_wireframe];
+        scene->current_wireframe_objects_map[name_to_wireframe] = collider_to_wireframe;
+        auto d = scene->drawble_name_map[name_to_wireframe];
         // If first_time_add/remove
         if (d->wireframe_info.one_time_change) {
-            wireframe_objects.remove(collider_to_wireframe);
-            wf_obj_block_map.erase(name_to_wireframe);
-            wf_obj_pass_map.erase(name_to_wireframe);
-            current_wireframe_objects_map.erase(name_to_wireframe);
+            scene->wireframe_objects.remove(collider_to_wireframe);
+            scene->wf_obj_block_map.erase(name_to_wireframe);
+            scene->wf_obj_pass_map.erase(name_to_wireframe);
+            scene->current_wireframe_objects_map.erase(name_to_wireframe);
         }
         d->wireframe_info.draw_frame = true;
     }
@@ -863,12 +1145,14 @@ void PlayMode::update_wireframe() {
 // prefix_on(off)_(onetime)_xxxxx
 // on means draw full color at first
 // check if there is a prefix_on(off)_(onetime)_xxxxx_invisible
-void PlayMode::initialize_wireframe_objects(std::string prefix) {
-    for (const auto &c: scene.colliders) {
+void Scene::initialize_wireframe_objects(std::string prefix) {
+
+
+    for (const auto &c: colliders) {
         if (c->name.find(prefix) != std::string::npos) {
             wireframe_objects.push_back(c);
             // Only one time?
-            auto d = scene.drawble_name_map[c->name];
+            auto d = drawble_name_map[c->name];
             
             if (c->name.find("pass") != std::string::npos) {
                 //wf_obj_pass.push_back(c);
@@ -897,41 +1181,41 @@ void PlayMode::initialize_wireframe_objects(std::string prefix) {
     // remove colliders in wf_obj_block_map && colliders is currently wireframe
     // remove colliders in wf_obj_pass_map && colliders is currently real
     for (const auto &it: wf_obj_block_map) {
-        auto d = scene.drawble_name_map[it.second->name];
+        auto d = drawble_name_map[it.second->name];
         if (d->wireframe_info.draw_frame == true) {
-            scene.colliders.remove(it.second);
+            colliders.remove(it.second);
         }
     }
     
     for (auto it: wf_obj_pass_map) {
-        auto d = scene.drawble_name_map[it.second->name];
+        auto d = drawble_name_map[it.second->name];
         if (d->wireframe_info.draw_frame == false) {
-            scene.colliders.remove(it.second);
+            colliders.remove(it.second);
         }
     }
 }
 
 // Should be called after all drawables are loaded into the list
-void PlayMode::initialize_scene_metadata() {
+void Scene::initialize_scene_metadata() {
     std::shared_ptr<Scene::Drawable> walkmesh_to_remove = nullptr;
-    for (const auto &d: scene.drawables) {
+    for (const auto &d: drawables) {
         std::string name = d->transform->name;
         if (name == "WalkMesh") {
             walkmesh_to_remove = d;
         } else {
-            scene.drawble_name_map[name] = d;
+            drawble_name_map[name] = d;
         }
     }
     
     if (walkmesh_to_remove) {
-        scene.drawables.remove(walkmesh_to_remove);
+        drawables.remove(walkmesh_to_remove);
     }
 }
 
 
 // Which mesh to lookup?
 // prefix_xxxxx
-void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes) {
+void Scene::initialize_collider(std::string prefix, Load<MeshBuffer> meshes) {
     for (const auto &it: meshes->meshes) {
         const std::string &name = it.first;
         auto mesh = it.second;
@@ -939,16 +1223,16 @@ void PlayMode::initialize_collider(std::string prefix, Load<MeshBuffer> meshes) 
             glm::vec3 min = mesh.min;
             glm::vec3 max = mesh.max;
             auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
-            auto d = scene.drawble_name_map[name];
+            auto d = drawble_name_map[name];
             collider->update_BBox(d->transform);
-            scene.colliders.push_back(collider);
-            scene.collider_name_map[name] = collider;
+            colliders.push_back(collider);
+            collider_name_map[name] = collider;
         }
     }
 }
 
 
-void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> meshes) {
+void Scene::initialize_text_collider(std::string prefix, Load<MeshBuffer> meshes) {
     for (const auto &it: meshes->meshes) {
         const std::string &name = it.first;
         auto mesh = it.second;
@@ -956,13 +1240,13 @@ void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> mes
             glm::vec3 min = mesh.min;
             glm::vec3 max = mesh.max;
             auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
-            auto d = scene.drawble_name_map[name];
+            auto d = drawble_name_map[name];
             if (d == nullptr) {
               continue;
             }
             collider->update_BBox(d->transform);
-            scene.text_colliders.push_back(collider);
-            scene.textcollider_name_map[name] = collider;
+            text_colliders.push_back(collider);
+            textcollider_name_map[name] = collider;
         }
     }
 }
@@ -971,12 +1255,12 @@ void PlayMode::initialize_text_collider(std::string prefix, Load<MeshBuffer> mes
 // Item to unlock must be a collider
 void PlayMode::unlock(std::string prefix) {
     
-    auto c = scene.collider_name_map[player.name];
+    auto c = scene->collider_name_map[player.name];
     
     std::shared_ptr<Scene::Collider> collider_to_remove = nullptr;
     std::string name_to_remove;
     
-    for (const auto &collider: scene.colliders) {
+    for (const auto &collider: scene->colliders) {
         if (collider->name.find(prefix) != std::string::npos) {
             auto dist = c->min_distance(collider);
             if (dist < 2.0) {
@@ -989,11 +1273,11 @@ void PlayMode::unlock(std::string prefix) {
         }
     }
     // Remove it from drawables and collider datastructure
-    auto d = scene.drawble_name_map[name_to_remove];
-    scene.drawables.remove(d);
-    scene.drawble_name_map.erase(name_to_remove);
-    scene.colliders.remove(collider_to_remove);
-    scene.collider_name_map.erase(name_to_remove);
+    auto d = scene->drawble_name_map[name_to_remove];
+    scene->drawables.remove(d);
+    scene->drawble_name_map.erase(name_to_remove);
+    scene->colliders.remove(collider_to_remove);
+    scene->collider_name_map.erase(name_to_remove);
 }
 
 
@@ -1038,7 +1322,7 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_text_check(st
     
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
     
-    for (const auto &it: scene.textcollider_name_map) {
+    for (const auto &it: scene->textcollider_name_map) {
         auto c = it.second;
         if (c->name.find(prefix) != std::string::npos) {
             bool intersected;
@@ -1103,7 +1387,7 @@ std::pair<std::shared_ptr<Scene::Collider>, float> PlayMode::mouse_collider_chec
     
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
     
-    for (const auto &it: scene.collider_name_map) {
+    for (const auto &it: scene->collider_name_map) {
         auto c = it.second;
         if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
             bool intersected;
@@ -1146,5 +1430,45 @@ ColliderType PlayMode::check_collider_type(std::shared_ptr<Scene::Collider> c){
         }
 
     }
+
+}
+
+
+void PlayMode::get_off_walkmesh(){
+    if (player.on_walkmesh){
+        player.on_walkmesh = false;
+    }else{
+        std::runtime_error("Trying to get off the walkmesh when it's already off");
+    }
+}
+
+
+void PlayMode::set_bouncing_spline(){
+
+    std::cerr << "This is a debug test for spline interpolation of player location" << std::endl;
+
+    //Hard code / Debug code for now.
+    
+    // Go to a location 
+    auto player_to_world = player.transform->make_local_to_world();
+    glm::vec3 player_world_location = {player_to_world[3][0], player_to_world[3][1], player_to_world[3][2]};
+
+    glm::vec3 middle_point = player_world_location;
+    middle_point.z += 3;
+    middle_point.x += 0.5;
+
+
+    glm::vec3 bounce_location = player_world_location;
+    bounce_location.z += 3;
+    bounce_location.x += 2;
+
+    player.player_bounce_spline.clear();
+    player.interpolation_time = 0.0f;
+
+    player.player_bounce_spline.set(0.0f,player_world_location);
+    player.player_bounce_spline.set(1.0f, bounce_location);
+    
+    // Add an extra control point
+    player.player_bounce_spline.set(0.5f,middle_point);
 
 }

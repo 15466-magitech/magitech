@@ -91,9 +91,13 @@ void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_lig
 
 	//Iterate through all drawables, sending each one to OpenGL:
 	for (auto const &drawable : drawables) {
+
+		//if (drawable->scene_info.type != )
+
 		if (drawable->wireframe_info.draw_frame != draw_frame){
 			continue;
 		}
+
 
 
 		//Reference to drawable's pipeline for convenience:

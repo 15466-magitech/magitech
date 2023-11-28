@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <deque>
+#include <chrono>
 
 
 typedef enum{
@@ -55,7 +56,9 @@ struct PlayMode : Mode {
     Spline<glm::quat> splinerotation;
     
     //local copy of the game scene (so code can change it during gameplay):
-    Scene scene;
+    std::shared_ptr<Scene> scene;
+    std::map<scene_type,std::shared_ptr<Scene>> scene_map;
+    scene_type current_scene_type;
     
     //player info:
     struct Player {
@@ -82,16 +85,15 @@ struct PlayMode : Mode {
         // arcsin 0.1 ~ 6 degrees
         static constexpr glm::vec3 defaultCameraRotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
 
+        bool on_walkmesh = true;
+        Spline<glm::vec3> player_bounce_spline;
+        float interpolation_time = 0.0f;
     } player;
     
-    // Wireframe logics
 
-    std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
-    std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> current_wireframe_objects_map;
-    //std::list<std::shared_ptr<Scene::Collider>> wf_obj_pass; // Object on walkmesh, blocked by invisible bbox when it's wireframe
-    std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> wf_obj_pass_map;
-    //std::list<std::shared_ptr<Scene::Collider>> wf_obj_block; // Normal object, blocked when it's real by bbox
-    std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> wf_obj_block_map;
+    void initialize_scene(Load<Scene>, Load<MeshBuffer>, scene_type);
+    // Should be called after this->scene is not null
+    void initialize_player();
 
 
     //debug
@@ -101,19 +103,14 @@ struct PlayMode : Mode {
     void update_wireframe();
     void update_wireframe(std::shared_ptr<Scene::Collider> collider);
     
-    void initialize_wireframe_objects(std::string prefix);
+
     
     
     // Unlock logics(for open sesame)
     void unlock(std::string prefix);
     
     
-    //initilization functions
-    void initialize_scene_metadata();
     
-    void initialize_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
-
-    void initialize_text_collider(std::string prefix_pattern, Load<MeshBuffer> meshes);
 
     // Mouse-collider check return the collider and the distance pair
     std::pair<std::shared_ptr<Scene::Collider>,float> mouse_collider_check(std::string prefix="col_",bool use_crosshair = false);
@@ -121,5 +118,15 @@ struct PlayMode : Mode {
     ColliderType check_collider_type(std::shared_ptr<Scene::Collider> c);
 
 
+
+    // Bouncing logic
+    void get_off_walkmesh();
+    void set_bouncing_spline();
+
+
+    //Scene change
+    decltype(std::chrono::system_clock::now()) start;
+    decltype(std::chrono::system_clock::now()) end;
+    bool is_changing_scene;
 
 };
