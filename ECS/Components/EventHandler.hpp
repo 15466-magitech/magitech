@@ -11,13 +11,12 @@
 
 #include <SDL.h>
 #include <glm/glm.hpp>
-#include "../Component.hpp"
+#include "../HandlerComponent.hpp"
 
-struct EventHandler : Component<EventHandler> {
-    explicit EventHandler(const std::function<bool(SDL_Event const &, glm::uvec2 const &)> &f);
+/* A struct to handle SDL input events */
+struct EventHandler : HandlerComponent<EventHandler, bool, SDL_Event const &, glm::uvec2 const &> {
+    using HandlerComponent<EventHandler, bool, SDL_Event const &, glm::uvec2 const &>::HandlerComponent;
     
-    bool handle_event(SDL_Event const &evt, glm::uvec2 const &window_size);
-
-private:
-    const std::function<bool(SDL_Event const &, glm::uvec2 const &)> &handler;
+    /* Handle all events in no particular order. Returns true if any handler handles the event. */
+    static bool handle_event_all(SDL_Event const &evt, glm::uvec2 const &window_size);
 };
