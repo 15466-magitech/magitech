@@ -12,6 +12,21 @@
 #include <vector>
 #include <deque>
 
+
+typedef enum{
+    WIREFRAME,
+    DOOR,
+    FOOD,
+    UNKNOWN
+} ColliderType;
+
+typedef enum {
+  NO = 0,
+  TO = 1,
+  THERE = 2,
+  FROM = 3,
+} animation_t;
+
 struct PlayMode : Mode {
     PlayMode();
     
@@ -35,7 +50,7 @@ struct PlayMode : Mode {
         uint8_t pressed = 0;
     } left, right, down, up, read;
     // camera animation
-    bool animated = false;
+    animation_t animated = NO;
     float animationTime = 0.0f;
     Spline<glm::vec3> splineposition;
     Spline<glm::quat> splinerotation;
@@ -53,10 +68,25 @@ struct PlayMode : Mode {
         
         //other metadata
         std::string name = "Player";
+
+        //player ability
+        bool has_paint_ability = false;
+        bool has_unlock_ability = false;
+
+        static constexpr float SIGHT_DISTANCE = 5.0f;
+
+        // camera positioning
+        //default view point behind player
+        // Due to the crosshair, need to move player a little left/right
+        static constexpr glm::vec3 defaultCameraPosition = glm::vec3(-1.0f, -5.0f, 2.5f);
+        //rotate camera to something pointing in way of player
+        // arcsin 0.1 ~ 6 degrees
+        static constexpr glm::vec3 defaultCameraRotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+
     } player;
     
     // Wireframe logics
-    bool has_paint_ability = false;
+
     std::list<std::shared_ptr<Scene::Collider>> wireframe_objects;
     std::unordered_map<std::string, std::shared_ptr<Scene::Collider>> current_wireframe_objects_map;
     //std::list<std::shared_ptr<Scene::Collider>> wf_obj_pass; // Object on walkmesh, blocked by invisible bbox when it's wireframe
@@ -89,4 +119,8 @@ struct PlayMode : Mode {
     // Mouse-collider check return the collider and the distance pair
     std::pair<std::shared_ptr<Scene::Collider>,float> mouse_collider_check(const std::string& prefix="col_",bool use_crosshair = false);
     std::pair<std::shared_ptr<Scene::Collider>,float> mouse_text_check(const std::string& prefix="text_",bool use_crosshair = false);
+    ColliderType check_collider_type(std::shared_ptr<Scene::Collider> c);
+
+
+
 };

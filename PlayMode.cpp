@@ -181,14 +181,8 @@ PlayMode::PlayMode()
     player.camera->transform->name = "player_c";
     scene.cams["player_c"] = player.camera;
     
-    //default view point behind player
-    
-    // Due to the crosshair, need to move player a little left/right
-    player.camera->transform->position = glm::vec3(-1.0f, -5.0f, 2.5f);
-    
-    //rotate camera to something pointing in way of player
-    // arcsin 0.1 ~ 6 degrees
-    player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
+    player.camera->transform->position = player.defaultCameraPosition;
+    player.camera->transform->rotation = player.defaultCameraRotation;
     //glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     
     //start player walking at nearest walk point:
@@ -217,11 +211,14 @@ PlayMode::PlayMode()
         switch (command) {
             case Command::OpenSesame:
                 unlock("unlock_");
+                    //unlock("unlock_");
+                    player.has_unlock_ability = true;
+                    std::cout << "command was open sesame!\n";
                 break;
             case Command::Mirage:
                 //activate paintbrush
                 std::string pb_object_name = "col_wire_off_block_Paintbrush";
-                if (!has_paint_ability) {
+                    if (!player.has_paint_ability) {
                     auto pb = scene.collider_name_map[pb_object_name];
                     
                     float distance = pb->min_distance(scene.collider_name_map[player.name]);
@@ -230,7 +227,7 @@ PlayMode::PlayMode()
                         auto d = scene.drawble_name_map[pb_object_name];
                         assert(d->wireframe_info.draw_frame);
                         d->wireframe_info.draw_frame = false;
-                        has_paint_ability = true;
+                            player.has_paint_ability = true;
                         scene.colliders.push_back(pb);
                         current_wireframe_objects_map.erase(pb_object_name);
                         if (d->wireframe_info.one_time_change) {
@@ -290,12 +287,42 @@ PlayMode::PlayMode()
                     
                     std::tie(c, distance) = mouse_collider_check("col_", true);
                     if (c) {
+                auto type = check_collider_type(c);
+                switch (type)
+                {
+                case WIREFRAME:{
                         auto player_collider = scene.collider_name_map[player.name];
                         if (distance < 10.0f) {
                             // Do not update if player intersects the object
                             if (!player_collider->intersect(c))
                                 update_wireframe(c);
                         }
+                    break;
+                }
+
+                case DOOR:{
+                    if(player.has_unlock_ability){
+                        auto player_collider = scene.collider_name_map[player.name];
+                        if (distance < 10.0f) {
+                            // Remove it from drawables and collider datastructure
+                            auto d = scene.drawble_name_map[c->name];
+                            scene.drawables.remove(d);
+                            scene.drawble_name_map.erase(c->name);
+                            scene.colliders.remove(c);
+                            scene.collider_name_map.erase(c->name);
+                            break;
+                        }
+                    }
+                    
+                }
+                case FOOD:
+                    break;
+                default:
+                    break;
+                }
+
+
+
                     }
                     
                     //update_wireframe();
@@ -353,7 +380,7 @@ PlayMode::PlayMode()
                     pitch = std::max(pitch, 0.05f * glm::pi<glm::float32>());
                     player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
                     
-                    const glm::float32 DIST_TO_PLAYER = glm::length(glm::vec3(-1.0f, -5.0f, 2.5f));
+            const glm::float32 DIST_TO_PLAYER = glm::length(player.defaultCameraPosition);
                     player.camera->transform->position =
                             -player.camera->transform->rotation * glm::vec3(-1.0f, 2.0f, DIST_TO_PLAYER);
                     
@@ -378,13 +405,15 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
-    if (!animated && read.pressed && animationTime == 0.0) {
+    if (animated == NO && read.pressed && animationTime == 0.0) {
         //float distance = std::numeric_limits<float>::max();
-        float distance = 5.0; // sight distance
+      float distance = player.SIGHT_DISTANCE; // can see this far
         auto playerToWorld = player.transform->make_local_to_world();
         auto here = player.transform->position;
         std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
         std::string selected;
+
+      // find the closest text bearer
         for (const auto &[name, mesh]: textBearers) {
             if (!endsWith(name, "_m")) {
                 continue;
@@ -405,16 +434,14 @@ void PlayMode::update(float elapsed) {
             std::string selectedCamera = textBearerCams[selected];
             auto destCamera = scene.cams[selectedCamera];
             assert(destCamera != nullptr);
-            animated = true;
+        animated = TO;
             animationTime = 0.0f;
             auto selectedToWorld = nameToTransform[selected]->make_local_to_world();
-            auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
             //auto playerCameraToWorld = player.camera->transform->make_local_to_world();
             auto startposition = playerToWorld * glm::vec4(player.camera->transform->position, 1.0);
-            auto endrotation = glm::quat_cast(
-                    glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
-            auto startrotation = glm::quat_cast(
-                    glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
+        auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
+        auto startrotation = glm::quat_cast(glm::mat3(playerToWorld) * glm::mat3_cast(player.camera->transform->rotation));
+        auto endrotation = glm::quat_cast(glm::mat3(selectedToWorld) * glm::mat3_cast(destCamera->transform->rotation));
             splineposition = Spline<glm::vec3>();
             splinerotation = Spline<glm::quat>();
             splineposition.set(0.0f, startposition);
@@ -423,28 +450,40 @@ void PlayMode::update(float elapsed) {
             splinerotation.set(1.0f, endrotation);
             // now use world camera
             player.camera->transform->parent = nullptr;
-        } else {
-            std::cout << "No readable sign in range" << std::endl;
+      } else {
+        std::cout << "No readable sign in range" << std::endl;
         }
     }
     // camera animation
-    if (animated) {
+    if (animated == TO || animated == FROM) {
         animationTime += elapsed;
         animationTime = std::min(1.0f, animationTime);
         player.camera->transform->position = splineposition.at(animationTime);
         player.camera->transform->rotation = splinerotation.at(animationTime);
         if (animationTime == 1.0f) {
-            animated = false;
+        animationTime = 0.0f;
+        if (animated == TO) {
+std::cout << "arrived" << std::endl;
+          animated = THERE;
+        } else {
+          animated = NO;
+          // back to player local camera
+          player.camera->transform->position = player.defaultCameraPosition;
+          player.camera->transform->rotation = player.defaultCameraRotation;
+          player.camera->transform->parent = player.transform;
         }
     }
-    
+    }
     // reset camera
-    if (!animated && !read.pressed && animationTime > 0.0) {
+    if (animated == THERE && !read.pressed) {
+std::cout << "there" << std::endl;
+      animated = FROM;
         animationTime = 0.0;
-        player.camera->transform->position = glm::vec3(-1.0f, -5.0f, 2.5f);
-        player.camera->transform->rotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
-        // back to player local camera
-        player.camera->transform->parent = player.transform;
+      auto playerToWorld = player.transform->make_local_to_world();
+      splineposition.set(0.0f, player.camera->transform->position);
+      splinerotation.set(0.0f, player.camera->transform->rotation);
+      splineposition.set(1.0f, playerToWorld * glm::vec4(player.defaultCameraPosition, 1.0f));
+      splinerotation.set(1.0f, glm::quat(glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
     }
     
     //player walking:
@@ -652,7 +691,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 // TODO exclude player collider?
 void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
-    if (!has_paint_ability) {
+    if (!player.has_paint_ability) {
         return;
     }
     
@@ -673,7 +712,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     }
     
     
-    if (!has_paint_ability) {
+    if (!player.has_paint_ability) {
         if (c->name.find("Paintbrush") == std::string::npos) {
             return;
         }
@@ -718,7 +757,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     }
     
     if (c->name.find("Paintbrush") != std::string::npos) {
-        has_paint_ability = true;
+        player.has_paint_ability = true;
     }
 }
 
@@ -731,7 +770,7 @@ void PlayMode::update_wireframe() {
     
     auto c = scene.collider_name_map[player.name];
     
-    if (has_paint_ability) {
+    if (player.has_paint_ability) {
         // remove real object, only draw wireframe
         for (const auto &collider: wireframe_objects) {
             if (collider->name == player.name) {
@@ -752,8 +791,8 @@ void PlayMode::update_wireframe() {
         // turn wireframe object real
         if (collider_to_wireframe == nullptr) {
             // Add it back
-            for (auto &it: current_wireframe_objects_map) {
-                std::string name = it.first;
+            for (const auto &it: current_wireframe_objects_map) {
+                const std::string &name = it.first;
                 auto collider = it.second;
                 auto dist = c->min_distance(collider);
                 if (dist < 0.5 && !c->intersect(collider)) {
@@ -776,7 +815,7 @@ void PlayMode::update_wireframe() {
                 if (!current_wireframe_objects_map.count(name)) {
                     collider_to_wireframe = collider;
                     name_to_wireframe = name;
-                    has_paint_ability = true;
+                    player.has_paint_ability = true;
                     break;
                     
                 }
@@ -784,8 +823,8 @@ void PlayMode::update_wireframe() {
         }
         if (collider_to_wireframe == nullptr) {
             // Add it back
-            for (auto &it: current_wireframe_objects_map) {
-                std::string name = it.first;
+            for (const auto &it: current_wireframe_objects_map) {
+                const std::string &name = it.first;
                 if (name.find("Paintbrush") == std::string::npos) {
                     continue;
                 }
@@ -795,7 +834,7 @@ void PlayMode::update_wireframe() {
                 if (dist < 0.5 && !c->intersect(collider)) {
                     collider_to_real = collider;
                     name_to_real = name;
-                    has_paint_ability = true;
+                    player.has_paint_ability = true;
                     break;
                 }
             }
@@ -852,7 +891,7 @@ void PlayMode::update_wireframe() {
 // on means draw full color at first
 // check if there is a prefix_on(off)_(onetime)_xxxxx_invisible
 void PlayMode::initialize_wireframe_objects(const std::string &prefix) {
-    for (auto &c: scene.colliders) {
+    for (const auto &c: scene.colliders) {
         if (c->name.find(prefix) != std::string::npos) {
             wireframe_objects.push_back(c);
             // Only one time?
@@ -920,8 +959,8 @@ void PlayMode::initialize_scene_metadata() {
 // Which mesh to lookup?
 // prefix_xxxxx
 void PlayMode::initialize_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
-    for (auto &it: meshes->meshes) {
-        std::string name = it.first;
+    for (const auto &it: meshes->meshes) {
+        const std::string &name = it.first;
         auto mesh = it.second;
         if (name.find(prefix) != std::string::npos || name == "Player") {
             glm::vec3 min = mesh.min;
@@ -937,8 +976,8 @@ void PlayMode::initialize_collider(const std::string &prefix, Load<MeshBuffer> m
 
 
 void PlayMode::initialize_text_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
-    for (auto &it: meshes->meshes) {
-        std::string name = it.first;
+    for (const auto &it: meshes->meshes) {
+        const std::string &name = it.first;
         auto mesh = it.second;
         if (name.find(prefix) != std::string::npos) {
             glm::vec3 min = mesh.min;
@@ -1112,4 +1151,29 @@ PlayMode::mouse_collider_check(const std::string &prefix, bool use_crosshair) {
     
     float distance = glm::length(dir.d * dir.t);
     return std::make_pair(intersected_collider, distance);
+}
+
+
+
+ColliderType PlayMode::check_collider_type(std::shared_ptr<Scene::Collider> c){
+    if(!c){
+        std::runtime_error("NULL pointer");
+        return UNKNOWN;
+    }
+    else{
+        const std::string &name = c->name;
+
+        if(name.find("col_wire")!=std::string::npos){
+            return WIREFRAME;
+        }else if (name.find("col_unlock")!=std::string::npos){
+            return DOOR;
+        }else if (name.find("col_food")!=std::string::npos){
+            return FOOD;
+        }else{
+            std::runtime_error("Unkonwn collider type");
+            return UNKNOWN;
+        }
+
+    }
+
 }
