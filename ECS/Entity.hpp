@@ -33,8 +33,8 @@ struct Entity {
             entity_to_component.erase(id);
         };
         
-        if (T::system_running) {
-            return T::to_add.emplace(id, T(args...)).first->second;
+        if (T::get_system_running()) {
+            return T::get_to_add().emplace(id, T(args...)).first->second;
         } else {
             std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
             return entity_to_component.emplace(id, T(args...)).first->second;
@@ -58,8 +58,8 @@ struct Entity {
     template<typename T>
     void remove_component() {
         to_delete.erase(std::type_index(typeid(T)));
-        if (T::system_running) {
-            T::to_delete.push_back(id);
+        if (T::get_system_running()) {
+            T::get_to_delete().push_back(id);
         } else {
             std::unordered_map<uint32_t, T> &entity_to_component = T::get_map();
             entity_to_component.erase(id);
