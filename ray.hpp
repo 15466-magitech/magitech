@@ -38,7 +38,7 @@ struct Ray
      : o(ray.o), d(ray.d), mint(mint), maxt(maxt){ }
 
     /// Return the position of a point along the ray
-    glm::vec3 operator() (float t) const { return o + t * d; }
+    glm::vec3 operator() (float time) const { return o + time * d; }
     
     Ray normalizeRay() const
     {
