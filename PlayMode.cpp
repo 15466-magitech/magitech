@@ -690,8 +690,8 @@ void PlayMode::draw_black_screen(){
     GL_ERRORS();
     
 
-    end = std::chrono::system_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+    end_timepoint = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_timepoint - start_timepoint);
 
     if (duration.count() > 3){
         is_changing_scene = false;
@@ -1528,7 +1528,7 @@ void PlayMode::initialize_player(){
                 //debug scene change
                 else if (evt.key.keysym.sym == SDLK_DELETE){
                     is_changing_scene = true;
-                    start = std::chrono::system_clock::now();
+                    start_timepoint = std::chrono::system_clock::now();
                     //change to foodworld?
                     scene = scene_map[FOODSCENE];
                     initialize_player();
