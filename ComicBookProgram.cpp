@@ -22,9 +22,9 @@ Load< ComicBookProgram > lit_color_texture_program(LoadTagEarly, []() -> ComicBo
         glUniform1i(ret->LIGHT_TYPE_int, 1);
         glUniform3fv(ret->LIGHT_DIRECTION_vec3, 1,
                      glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
-        glUniform3fv(ret->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.6f, 0.7f, 0.85f)));
+        glUniform3fv(ret->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.6f, 0.65f, 0.7f)));
         glUniform3fv(ret->AMBIENT_LIGHT_ENERGY_vec3, 1,
-                     glm::value_ptr(glm::vec3(0.5f, 0.4f, 0.25f)));
+                     glm::value_ptr(glm::vec3(0.5f, 0.45f, 0.4f)));
     };
 
 	/* This will be used later if/when we build a light loop into the Scene:
@@ -160,8 +160,8 @@ ComicBookProgram::ComicBookProgram() {
 		"	} else if (LIGHT_TYPE == 1) { //hemi light \n"
         "       //float b = float(pixelShade(gl_FragCoord.x, gl_FragCoord.y, (dot(n,-LIGHT_DIRECTION) * 0.5 + 0.5)));\n"
         "       float b = dot(n,LIGHT_DIRECTION) * 0.5 + 0.5;\n"
-        "       if (sampleShadow(position) > 0.0)\n"
-        "           b = 0.0;\n"
+        "       //if (sampleShadow(position) > 0.0)\n"
+        "       //    b = 0.0;\n"
 		"		e = b * LIGHT_ENERGY + AMBIENT_LIGHT_ENERGY;\n"
 		"	} else if (LIGHT_TYPE == 2) { //spot light \n"
 		"		vec3 l = (LIGHT_LOCATION - position);\n"
