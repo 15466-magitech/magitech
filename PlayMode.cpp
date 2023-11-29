@@ -349,7 +349,7 @@ void PlayMode::update(float elapsed) {
         }
     }
     // reset camera
-    if (animated == THERE && !read.pressed) {
+    if (animated == THERE && esc.pressed) {
 //std::cout << "there" << std::endl;
         animated = FROM;
         animationTime = 0.0;
@@ -1431,6 +1431,8 @@ void PlayMode::initialize_player(){
                     }else{
                         SDL_SetRelativeMouseMode(SDL_FALSE);
                     }
+                    esc.downs += 1;
+                    esc.pressed = true;
                     return true;
                 } else if (evt.key.keysym.sym == SDLK_a) {
                     left.downs += 1;
@@ -1548,6 +1550,9 @@ void PlayMode::initialize_player(){
                     return true;
                 } else if (evt.key.keysym.sym == SDLK_r) {
                     read.pressed = false;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_ESCAPE) {
+                    esc.pressed = false;
                     return true;
                 }
             } else if (evt.type == SDL_MOUSEBUTTONDOWN) {
