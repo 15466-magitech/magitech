@@ -1,5 +1,6 @@
 #include "PlayMode.hpp"
 
+#include "ShadowProgram.hpp"
 #include "ComicBookProgram.hpp"
 #include "RocketColorTextureProgram.hpp"
 #include "TextureProgram.hpp"
@@ -1334,7 +1335,7 @@ void PlayMode::initialize_scene(Load<Scene> scene_to_copy, Load<MeshBuffer> mesh
     new_scene->drawables.emplace_back(std::make_shared<Scene::Drawable>(player_transform));
     std::shared_ptr<Scene::Drawable> wizard_drawable = new_scene->drawables.back();
     
-    wizard_drawable->pipeline = lit_color_texture_program_pipeline;
+    wizard_drawable->pipeline = rocket_color_texture_program_pipeline;
     
     wizard_drawable->pipeline.vao = wizard_meshes_for_lit_color_texture_program;
     wizard_drawable->pipeline.type = mesh.type;

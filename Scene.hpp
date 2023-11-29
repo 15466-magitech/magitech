@@ -228,7 +228,7 @@ struct Scene {
 
 	//this function is called to read extra chunks from the scene file after the main chunks are read:
 	// this is useful if you, e.g., subclassing scene to represent a game level/area
-	virtual void load_extra(std::istream &from, std::vector< char > const &str0, std::vector< Transform * > const &xfh0) { }
+    void load_extra(std::istream &from, std::vector< char > const &str0, std::vector< Transform * > const &xfh0) { }
 
 	//empty scene:
 	Scene() = default;

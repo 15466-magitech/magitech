@@ -137,6 +137,7 @@ const game_names = [
     maek.CPP('PlayMode.cpp'),
     maek.CPP('main.cpp'),
     maek.CPP('ComicBookProgram.cpp'),
+    maek.CPP('ShadowProgram.cpp'),
     maek.CPP('RocketColorTextureProgram.cpp'),
     maek.CPP('TextureProgram.cpp'),
     //maek.CPP('ColorTextureProgram.cpp'),  //not used right now, but you might want it
