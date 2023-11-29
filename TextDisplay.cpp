@@ -6,7 +6,7 @@
 #include "ECS/Components/Draw.hpp"
 
 TextDisplay::TextDisplay(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size)
-        : font("UbuntuMono.png"), rows(rows), cols(cols), loc(loc), size(size) {
+        : font("UbuntuMono.png"), rows(rows), cols(cols), loc(loc), size(size), _is_activated(false) {
     assert(rows > 0);
     assert(cols > 0);
 }
@@ -34,10 +34,13 @@ void TextDisplay::activate() {
             }
         }
     });
+
+    _is_activated = true;
 }
 
 void TextDisplay::deactivate() {
     remove_component<Draw>();
+    _is_activated = false;
 }
 
 void TextDisplay::add_text(const std::vector<std::string> &strs) {
@@ -69,4 +72,9 @@ void TextDisplay::add_text(const std::vector<std::string> &strs) {
     while (text.size() > rows) {
         text.erase(text.begin());
     }
+}
+
+
+bool TextDisplay::is_activated(){
+    return _is_activated;
 }

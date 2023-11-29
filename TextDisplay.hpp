@@ -17,6 +17,8 @@ struct TextDisplay : Entity {
     
     size_t rows, cols;
     glm::vec2 loc, size;
+
+    bool _is_activated;
     
     /*
      * Construct a text display of as many rows and columns of characters
@@ -38,4 +40,6 @@ struct TextDisplay : Entity {
      * Need to make sure every std::string can fit in one line, there is no check in the function
      */
     void add_text(const std::vector<std::string>&);
+
+    bool is_activated();
 };
