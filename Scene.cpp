@@ -136,6 +136,10 @@ void Scene::draw_shadow(glm::mat4 const &world_to_clip, glm::mat4x3 const &world
 void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light, bool draw_frame) const {
     // Draw the scene
 	for (auto const &drawable : drawables) {
+		if (drawable->is_invisible){
+			continue;
+		}
+
 		if (drawable->wireframe_info.draw_frame != draw_frame){
 			continue;
 		}
@@ -641,4 +645,164 @@ std::pair<int, float> Scene::Collider::least_collison_axis(std::shared_ptr<Scene
 	}
 
 	return std::make_pair(idx,min_overlap);
+}
+
+
+// prefix_on(off)_(onetime)_xxxxx
+// on means draw full color at first
+// check if there is a prefix_on(off)_(onetime)_xxxxx_invisible
+void Scene::initialize_wireframe_objects(const std::string &prefix) {
+    for (const auto &c: colliders) {
+        if (c->name.find(prefix) != std::string::npos) {
+            wireframe_objects.push_back(c);
+            // Only one time?
+            auto d = drawble_name_map[c->name];
+            
+            if (c->name.find("_pass") != std::string::npos) {
+                //wf_obj_pass.push_back(c);
+                wf_obj_pass_map[c->name] = c;
+            } else if (c->name.find("_block") != std::string::npos) {
+                //wf_obj_block.push_back(c);
+                wf_obj_block_map[c->name] = c;
+            } else {
+                throw std::runtime_error("Unknown type of wireframe object");
+            }
+            
+            if (c->name.find("_onetime") != std::string::npos) {
+                d->wireframe_info.one_time_change = true;
+            } else {
+                d->wireframe_info.one_time_change = false;
+            }
+            if (c->name.find("_on") != std::string::npos) {
+                d->wireframe_info.draw_frame = false;
+            } else {
+                d->wireframe_info.draw_frame = true;
+                current_wireframe_objects_map[c->name] = c;
+            }
+        }
+    }
+    
+    // remove colliders in wf_obj_block_map && colliders is currently wireframe
+    // remove colliders in wf_obj_pass_map && colliders is currently real
+    for (const auto &it: wf_obj_block_map) {
+        auto d = drawble_name_map[it.second->name];
+        if (d->wireframe_info.draw_frame) {
+            colliders.remove(it.second);
+        }
+    }
+    
+    for (const auto &it: wf_obj_pass_map) {
+        auto d = drawble_name_map[it.second->name];
+        if (!d->wireframe_info.draw_frame) {
+            colliders.remove(it.second);
+        }
+    }
+}
+
+// Should be called after all drawables are loaded into the list
+void Scene::initialize_scene_metadata() {
+    std::shared_ptr<Scene::Drawable> walkmesh_to_remove = nullptr;
+    for (const auto &d: drawables) {
+        std::string name = d->transform->name;
+        if (name == "WalkMesh") {
+            walkmesh_to_remove = d;
+        } else {
+            drawble_name_map[name] = d;
+        }
+    }
+    
+    if (walkmesh_to_remove) {
+        drawables.remove(walkmesh_to_remove);
+    }
+}
+
+
+// Which mesh to lookup?
+// prefix_xxxxx
+void Scene::initialize_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
+    for (const auto &it: meshes->meshes) {
+        const std::string &name = it.first;
+        auto mesh = it.second;
+        if (name.find(prefix) != std::string::npos || name == "Player") {
+            glm::vec3 min = mesh.min;
+            glm::vec3 max = mesh.max;
+            auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
+            auto d = drawble_name_map[name];
+            collider->update_BBox(d->transform);
+            colliders.push_back(collider);
+            collider_name_map[name] = collider;
+        }
+    }
+}
+
+
+void Scene::initialize_text_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
+    for (const auto &it: meshes->meshes) {
+        const std::string &name = it.first;
+        auto mesh = it.second;
+        if (name.find(prefix) != std::string::npos) {
+            glm::vec3 min = mesh.min;
+            glm::vec3 max = mesh.max;
+            auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
+            auto d = drawble_name_map[name];
+            if (d == nullptr) {
+                continue;
+            }
+            collider->update_BBox(d->transform);
+            text_colliders.push_back(collider);
+            textcollider_name_map[name] = collider;
+        }
+    }
+}
+
+
+// a pair of bread name should be bread_name_1 and bread_name_2
+// bread name must ends with _1 or _2
+void Scene::initialize_bread(const std::string &prefix, Load<MeshBuffer> meshes){
+
+	auto endsWith = [](const std::string &str, const std::string &suffix) {
+		if (str.length() < suffix.length()) {
+			return false;
+		}
+		return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+	};
+
+
+	for (const auto &it: meshes->meshes) {
+        const std::string &name = it.first;
+        auto mesh = it.second;
+        if (name.find(prefix) != std::string::npos) {
+			if (endsWith(name,"_1")){
+				glm::vec3 min = mesh.min;
+				glm::vec3 max = mesh.max;
+				auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
+				auto d = drawble_name_map[name];
+				if (d == nullptr) {
+					continue;
+				}
+				collider->update_BBox(d->transform);
+				bread_colliders.push_back(collider);
+				breadcollider_name_map[name] = collider;
+
+
+				std::string location_name = name;
+				location_name.pop_back();
+				location_name.push_back('2');
+
+
+				auto location_mesh = meshes->lookup(location_name);
+
+				auto location_drawable = drawble_name_map[location_name];
+				// set the location to be invisible
+				location_drawable->is_invisible = true;
+
+				auto tmp_collider = Collider("tmp",location_mesh.min,location_mesh.max,location_mesh.min,location_mesh.max);
+				tmp_collider.update_BBox(location_drawable->transform);
+
+				glm::vec3 location = (tmp_collider.min + tmp_collider.max) / 2.0f;
+
+				bread_bouncelocation_map[collider] = location;
+			}
+        }
+    }
 }

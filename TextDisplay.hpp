@@ -42,4 +42,6 @@ struct TextDisplay : Entity {
     void add_text(const std::vector<std::string>&);
 
     bool is_activated();
+
+    void remove_all_text();
 };
