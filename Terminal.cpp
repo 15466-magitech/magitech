@@ -2,6 +2,8 @@
 // Created by Russell Emerine on 10/30/23.
 //
 
+#include <locale>
+
 #include "Terminal.hpp"
 #include "ECS/Components/EventHandler.hpp"
 #include "ECS/Components/TerminalDeactivateHandler.hpp"
