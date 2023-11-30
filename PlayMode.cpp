@@ -675,7 +675,7 @@ void PlayMode::draw_black_screen(){
 
     glBindVertexArray(vao);
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, attribs.size());
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei) attribs.size());
 
     glBindVertexArray(0);
 
