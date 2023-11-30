@@ -797,10 +797,10 @@ void PlayMode::draw_black_screen(){
     //actually draw some textured quads!
     std::vector< Vert > attribs;
 
-    attribs.emplace_back(glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec2(0.0f, 0.0f));
-    attribs.emplace_back(glm::vec3(-1.0f,  1.0f, 0.0f), glm::vec2(0.0f, 2.0f));
-    attribs.emplace_back(glm::vec3( 1.0f, -1.0f, 0.0f), glm::vec2(1.0f, 0.0f));
-    attribs.emplace_back(glm::vec3( 1.0f,  1.0f, 0.0f), glm::vec2(1.0f, 2.0f));
+    attribs.emplace_back(glm::vec3(-1.0f, -1.0f, 0.9f), glm::vec2(0.0f, 0.0f));
+    attribs.emplace_back(glm::vec3(-1.0f,  1.0f, 0.9f), glm::vec2(0.0f, 2.0f));
+    attribs.emplace_back(glm::vec3( 1.0f, -1.0f, 0.9f), glm::vec2(1.0f, 0.0f));
+    attribs.emplace_back(glm::vec3( 1.0f,  1.0f, 0.9f), glm::vec2(1.0f, 2.0f));
 
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Vert) * attribs.size(), attribs.data(), GL_STREAM_DRAW);
@@ -840,6 +840,8 @@ void PlayMode::draw_black_screen(){
 
     if (duration.count() > 3){
         is_changing_scene = false;
+        text_display.deactivate();
+        text_display.remove_all_text();
     }
 
     glEnable(GL_DEPTH_TEST);
@@ -847,7 +849,9 @@ void PlayMode::draw_black_screen(){
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
     if (is_changing_scene){
+
         draw_black_screen();
+        Draw::handle_all();
         return;
     }
 
@@ -1023,6 +1027,9 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     
     bool is_current_wireframe = scene->drawble_name_map[c->name]->wireframe_info.draw_frame;
     auto d = scene->drawble_name_map[c->name];
+
+
+    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
     
     if (is_current_wireframe) {
         scene->current_wireframe_objects_map.erase(c->name);
@@ -1049,7 +1056,14 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
             //change to foodworld?
             scene = scene_map[FOODSCENE];
             text_display.remove_all_text();
-            text_display.deactivate();
+ 
+            std::vector<std::string> tmpstr{
+            "The compass get solidified, the ship is taking off",
+            "You are travelling to another world"
+            };
+            text_display.add_text(tmpstr);
+            if(!text_display.is_activated())
+                text_display.activate();
             walkmesh = &foodworld_walkmeshes->lookup("WalkMesh");
             initialize_player();
         }
@@ -1078,7 +1092,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
         player.has_paint_ability = true;
     }
 
-    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
+
 }
 
 void PlayMode::update_wireframe() {
@@ -1629,22 +1643,28 @@ void PlayMode::initialize_player(){
                         auto type = check_collider_type(c);
                         switch (type) {
                             case WIREFRAME: {
-                                auto player_collider = scene->collider_name_map[player.name];
-                                if (distance < 10.0f) {
-                                    // Do not update if player intersects the object
-                                    if (!player_collider->intersect(c)){
-                                        update_wireframe(c);
-                                        //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
-                                    }else{
-                                        text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});
-                                    }
-                                    
+                                if(!player.has_paint_ability){
+                                    text_display.add_text(std::vector<std::string>{"You want to use your power, but nothing happens"});
                                 }else{
-                                    text_display.add_text(std::vector<std::string>{"You are too far away from theo object"});
-                                }
+                                    auto player_collider = scene->collider_name_map[player.name];
+                                    if (distance < 10.0f) {
+                                        // Do not update if player intersects the object
+                                        if (!player_collider->intersect(c)){
+                                            update_wireframe(c);
+                                            //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
+                                        }else{
+                                            text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});
+                                        }
+                                        
+                                    }else{
+                                        text_display.add_text(std::vector<std::string>{"You are too far away from theo object"});
+                                    }
 
-                                text_display.activate();
+                                    text_display.activate();
+
+                                }
                                 break;
+                               
                             }
                             
                             case DOOR: {

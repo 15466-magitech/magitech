@@ -151,6 +151,6 @@ struct PlayMode : Mode {
     //Scene change
     decltype(std::chrono::system_clock::now()) start_timepoint;
     decltype(std::chrono::system_clock::now()) end_timepoint;
-    bool is_changing_scene;
+    bool is_changing_scene = false;
 
 };
