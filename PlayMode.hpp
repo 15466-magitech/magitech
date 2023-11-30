@@ -82,10 +82,9 @@ struct PlayMode : Mode {
         std::string name = "Player";
 
         //player ability
-        // TODO: change to false
-        bool has_paint_ability = true;
-        bool has_unlock_ability = true;
-        bool has_bounce_ability = true;
+        bool has_paint_ability = false;
+        bool has_unlock_ability = false;
+        bool has_bounce_ability = false;
 
         static constexpr float SIGHT_DISTANCE = 5.0f;
 
