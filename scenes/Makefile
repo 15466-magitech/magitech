@@ -20,6 +20,9 @@ all : \
 	$(DIST)/artworld.pnct \
 	$(DIST)/artworld.w \
 	$(DIST)/artworld.scene \
+	$(DIST)/foodworld.pnct \
+    $(DIST)/foodworld.w \
+    $(DIST)/foodworld.scene \
 
 $(DIST)/artworld.pnct : ../models/artworld_scene_buildout.blend $(EXPORT_MESHES)
 	$(BLENDER) --background --python $(EXPORT_MESHES) -- '$<':NotWalkMesh '$@'
@@ -28,4 +31,13 @@ $(DIST)/artworld.scene : ../models/artworld_scene_buildout.blend $(EXPORT_SCENE)
 	$(BLENDER) --background --python $(EXPORT_SCENE) -- '$<':NotWalkMesh '$@'
 
 $(DIST)/artworld.w : ../models/artworld_scene_buildout.blend $(EXPORT_WALKMESHES)
+	$(BLENDER) --background --python $(EXPORT_WALKMESHES) -- '$<':WalkMeshes '$@'
+
+$(DIST)/foodworld.pnct : ../models/foodworld.blend $(EXPORT_MESHES)
+	$(BLENDER) --background --python $(EXPORT_MESHES) -- '$<':NotWalkMesh '$@'
+
+$(DIST)/foodworld.scene : ../models/foodworld.blend $(EXPORT_SCENE)
+	$(BLENDER) --background --python $(EXPORT_SCENE) -- '$<':NotWalkMesh '$@'
+
+$(DIST)/foodworld.w : ../models/foodworld.blend $(EXPORT_WALKMESHES)
 	$(BLENDER) --background --python $(EXPORT_WALKMESHES) -- '$<':WalkMeshes '$@'
