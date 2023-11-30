@@ -2,10 +2,15 @@
 
 #n.b. the '-y' sets autoexec scripts to 'on' so that driver expressions will work
 UNAME_S := $(shell uname -s)
+UNAME_R := $(shell uname -r)
 ifeq ($(UNAME_S),Darwin)
 	BLENDER = /Applications/Blender.app/Contents/MacOS/Blender -y
 else ifeq ($(UNAME_S),Linux)
-	BLENDER = ../../blender-2.93.4-linux-x64/blender -y
+	ifeq ($(UNAME_R),6.5.6-76060506-generic)
+		BLENDER = blender
+	else
+		BLENDER = ../../blender-2.93.4-linux-x64/blender -y
+	endif
 else
 	BLENDER = blender
 endif

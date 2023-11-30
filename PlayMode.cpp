@@ -493,7 +493,7 @@ void PlayMode::update(float elapsed) {
                     set_bouncing_spline(player.bounce_destination);
                     player.bounce_destination = glm::vec3{0.0f};
 
-                }else{
+                }else{ 
                     if(player.bounce_stage != 2){
                         std::runtime_error("Wrong Bounce Stage");
                     }
@@ -1330,6 +1330,7 @@ void PlayMode::initialize_scene(Load<Scene> scene_to_copy, Load<MeshBuffer> mesh
     new_scene->initialize_collider("col_", meshbuffer_param);
     new_scene->initialize_wireframe_objects("col_wire");
     new_scene->initialize_text_collider("text_", meshbuffer_param);
+    new_scene->initialize_bread("bread_",meshbuffer_param);
 
     scene_map[scene_param_type] = new_scene;
 }
@@ -1508,6 +1509,10 @@ void PlayMode::initialize_player(){
                                 }else{
                                     std::runtime_error("Unknown bread collider");
                                 }
+
+                                text_display.add_text(std::vector<std::string>{"You are jumping to a bread!"});
+                                text_display.activate();
+
                                 get_off_walkmesh();
                                 set_bouncing_spline(location);
                                 player.bounce_stage = 1;
@@ -1611,8 +1616,8 @@ void PlayMode::set_bouncing_spline(glm::vec3 destination){
     // Add a control point to the spline?
     glm::vec3 middle_point;
     middle_point.z  = destination.z + 2;
-    middle_point.x  = (destination.x - player_world_location.x) / 3;
-    middle_point.y  = (destination.y - player_world_location.y) / 3;
+    middle_point.x  = (destination.x - player_world_location.x) / 3 + player_world_location.x;
+    middle_point.y  = (destination.y - player_world_location.y) / 3 + player_world_location.y;
 
 
 

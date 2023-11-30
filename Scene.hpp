@@ -75,6 +75,9 @@ struct Scene {
             float shininess = 10.0f;
         } specular_info;
 
+		// Hide some objects that are in the mesh but we don't want to render
+		bool is_invisible = false;
+
 
 		//a 'Drawable' attaches attribute data to a transform:
 		Drawable(Transform *transform_) : transform(transform_) { assert(transform); }

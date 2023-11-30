@@ -136,6 +136,10 @@ void Scene::draw_shadow(glm::mat4 const &world_to_clip, glm::mat4x3 const &world
 void Scene::draw(glm::mat4 const &world_to_clip, glm::mat4x3 const &world_to_light, bool draw_frame) const {
     // Draw the scene
 	for (auto const &drawable : drawables) {
+		if (drawable->is_invisible){
+			continue;
+		}
+
 		if (drawable->wireframe_info.draw_frame != draw_frame){
 			continue;
 		}
@@ -788,7 +792,14 @@ void Scene::initialize_bread(const std::string &prefix, Load<MeshBuffer> meshes)
 
 				auto location_mesh = meshes->lookup(location_name);
 
-				glm::vec3 location = (location_mesh.min + location_mesh.max) / 2.0f;
+				auto location_drawable = drawble_name_map[location_name];
+				// set the location to be invisible
+				location_drawable->is_invisible = true;
+
+				auto tmp_collider = Collider("tmp",location_mesh.min,location_mesh.max,location_mesh.min,location_mesh.max);
+				tmp_collider.update_BBox(location_drawable->transform);
+
+				glm::vec3 location = (tmp_collider.min + tmp_collider.max) / 2.0f;
 
 				bread_bouncelocation_map[collider] = location;
 			}
