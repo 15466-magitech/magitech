@@ -4,7 +4,8 @@ The sign above the town's entrance seems like it's in bad shape,
  and it may be missing some letters. It currently looks like it reads Pain Point.
 <:>text_spaceship_m
 
-The door is locked, please try open sesame
+The door is locked, please try typing open sesame in the terminal.
+You can press E to activte the terminal.
 <:>text_big_bucket
 
 The artist made this world, then left.

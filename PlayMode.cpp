@@ -1645,6 +1645,7 @@ void PlayMode::initialize_player(){
                             case WIREFRAME: {
                                 if(!player.has_paint_ability){
                                     text_display.add_text(std::vector<std::string>{"You want to use your power, but nothing happens"});
+                                    text_display.activate();
                                 }else{
                                     auto player_collider = scene->collider_name_map[player.name];
                                     if (distance < 10.0f) {

@@ -42,13 +42,15 @@ bool Terminal::handle_key(SDL_Keycode key) {
     } else if (key == SDLK_RETURN) {
         if (!text_display.text.empty()) {
             if (text_display.text.back() == "open sesame") {
-                text_display.text.emplace_back("opening...");
+                text_display.text.emplace_back("activating unlock magic...");
+                text_display.add_text(std::vector<std::string>{"You can now use SPACE to unlock doors"});
                 if (text_display.text.size() > text_display.rows) {
                     text_display.text.erase(text_display.text.begin());
                 }
                 TerminalCommandHandler::handle_all(Command::OpenSesame);
             } else if (text_display.text.back() == "mirage") {
                 text_display.text.emplace_back("activating illusion magic...");
+                text_display.text.emplace_back("You can use SPACE to cast wireframe magic");
                 if (text_display.text.size() > text_display.rows) {
                     text_display.text.erase(text_display.text.begin());
                 }
