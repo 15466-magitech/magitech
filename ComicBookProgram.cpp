@@ -24,7 +24,7 @@ Load< ComicBookProgram > lit_color_texture_program(LoadTagEarly, []() -> ComicBo
                      glm::value_ptr(glm::normalize(glm::vec3(0.5f, 1.0f, -1.0f))));
         glUniform3fv(ret->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.6f, 0.65f, 0.7f)));
         glUniform3fv(ret->AMBIENT_LIGHT_ENERGY_vec3, 1,
-                     glm::value_ptr(glm::vec3(0.5f, 0.45f, 0.4f)));
+                     glm::value_ptr(glm::vec3(0.35f, 0.3f, 0.25f)));
     };
 
 	/* This will be used later if/when we build a light loop into the Scene:
@@ -117,7 +117,7 @@ ComicBookProgram::ComicBookProgram() {
         "    return pow(1.0f - texture(DEPTH, vec2(x / WINDOW_DIMENSIONS.x, y / WINDOW_DIMENSIONS.y)).x, 0.1);\n"
         "}\n"
         "float outlineWeight(float x, float y) {\n"
-        "    float a = 0.00025;\n"
+        "    float a = 0.001;\n"
         "    float b = 0.002;\n"
         "    float v = (abs(tex(x - 1, y) - tex(x, y)) + abs(tex(x, y - 1) - tex(x, y)));\n"
         "    return max(0.0, min(1.0, (v - a) / (b - a)));\n"
@@ -135,7 +135,7 @@ ComicBookProgram::ComicBookProgram() {
         "   return mat2(cos(angle), sin(angle), -sin(angle), cos(angle)) * pos;"
         "}\n"
         "vec3 pixelColor(vec2 pos, vec3 rgb) {\n"
-        "   float res = 4.5;\n"
+        "   float res = 3.5;\n"
         "   vec3 cmy = vec3(1.0) - rgb;\n"
         "   vec2 posM = rotate(pos / res, 75.0 / 180.0 * PI);\n"
         "   vec2 posY = pos / res;\n"
