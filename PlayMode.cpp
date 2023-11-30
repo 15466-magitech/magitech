@@ -204,6 +204,8 @@ PlayMode::PlayMode(SDL_Window *window)
     glGenVertexArrays(1, &image_vao);
     gen_framebuffers();
     image_vao = gen_image(glm::vec2(-1.0f, -1.0f), glm::vec2(2.0f, 2.0f), 0.0f, 0.0f, 1.0f, 1.0f);
+
+    gen_R_texture();
     
     // TODO: remove this test code
     {
@@ -361,6 +363,7 @@ void PlayMode::update(float elapsed) {
         splinerotation.set(1.0f, glm::quat(
                 glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
         text_display.deactivate();
+        text_display.remove_all_text();
     }
     
     //player walking:
@@ -486,10 +489,27 @@ void PlayMode::update(float elapsed) {
 
             // Get back to walkmesh mode as we finish the interpolation
             if (player.interpolation_time >= 1.0){
-                player.interpolation_time = 0.0;
-                player.on_walkmesh = true;
-                player.at = walkmesh->nearest_walk_point(player.transform->position);
-                player.transform->position = walkmesh->to_world_point(player.at);
+                // Check if this is the second jump?
+                if (player.bounce_stage == 1){
+                    player.interpolation_time = 0.0;
+                    player.bounce_stage = 2;
+                    set_bouncing_spline(player.bounce_destination);
+                    player.bounce_destination = glm::vec3{0.0f};
+
+                }else{
+                    if(player.bounce_stage != 2){
+                        std::runtime_error("Wrong Bounce Stage");
+                    }
+                    player.interpolation_time = 0.0;
+                    player.on_walkmesh = true;
+                    player.at = walkmesh->nearest_walk_point(player.transform->position);
+                    player.transform->position = walkmesh->to_world_point(player.at);
+                    player.bounce_stage = 0;
+                }
+
+
+
+
             }
         }
         
@@ -555,6 +575,25 @@ void PlayMode::gen_dot_texture() {
     GL_ERRORS();
 }
 
+void PlayMode::gen_R_texture() {
+    glGenTextures(1, &R_tex);
+    
+    glm::uvec2 size;
+    std::vector<glm::u8vec4> data;
+    load_png(data_path("R.png"), &size, &data, LowerLeftOrigin);
+    
+    glBindTexture(GL_TEXTURE_2D, R_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    
+    GL_ERRORS();
+}
+
 // Code derived from https://15466.courses.cs.cmu.edu/lesson/framebuffers
 void PlayMode::gen_framebuffers() {
     gen_dot_texture();
@@ -577,6 +616,111 @@ void PlayMode::gen_framebuffers() {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_depth_tex, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
+// Draw an R sign as a hint to the player
+void PlayMode::draw_keyboard_sign(glm::vec3 clip_space){
+
+    static GLuint Rbuffer = 0;
+    if (Rbuffer == 0) {
+        glGenBuffers(1, &Rbuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, Rbuffer);
+        //actually nothing to do right now just wanted to bind it for illustrative purposes
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    struct Vert {
+        Vert(glm::vec3 const &position_, glm::vec2 const &tex_coord_) : position(position_), tex_coord(tex_coord_) { }
+        glm::vec3 position;
+        glm::vec2 tex_coord;
+    };
+    static_assert(sizeof(Vert) == 20, "Vert is packed");
+
+    auto &program = texture_program;
+
+    static GLuint R_vao = 0;
+    if (R_vao == 0) {
+        //based on PPU466.cpp
+
+        glGenVertexArrays(1, &R_vao);
+        glBindVertexArray(R_vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, Rbuffer);
+
+        glVertexAttribPointer(
+            program->Position_vec4, //attribute
+            3, //size
+            GL_FLOAT, //type
+            GL_FALSE, //normalized
+            sizeof(Vert), //stride
+            (GLbyte *)0 + offsetof(Vert, position) //offset
+        );
+        glEnableVertexAttribArray(program->Position_vec4);
+
+        glVertexAttribPointer(
+            program->TexCoord_vec2, //attribute
+            2, //size
+            GL_FLOAT, //type
+            GL_FALSE, //normalized
+            sizeof(Vert), //stride
+            (GLbyte *)0 + offsetof(Vert, tex_coord) //offset
+        );
+        glEnableVertexAttribArray(program->TexCoord_vec2);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindVertexArray(0);
+    }
+
+
+    //actually draw some textured quads!
+    std::vector< Vert > attribs;
+
+    clip_space.y += 0.1;
+
+    attribs.emplace_back(glm::vec3(clip_space.x - 0.03f, clip_space.y - 0.03f, 0.0f), glm::vec2(0.0f, 0.0f));
+    attribs.emplace_back(glm::vec3(clip_space.x - 0.03f, clip_space.y + 0.03f, 0.0f), glm::vec2(0.0f, 1.0f));
+    attribs.emplace_back(glm::vec3(clip_space.x + 0.03f, clip_space.y - 0.03f, 0.0f), glm::vec2(1.0f, 0.0f));
+    attribs.emplace_back(glm::vec3(clip_space.x + 0.03f, clip_space.y + 0.03f, 0.0f), glm::vec2(1.0f, 1.0f));
+
+    glBindBuffer(GL_ARRAY_BUFFER, Rbuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vert) * attribs.size(), attribs.data(), GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    //as per Scene::draw -
+    glUseProgram(program->program);
+    glUniformMatrix4fv(program->OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+
+    glBindTexture(GL_TEXTURE_2D, R_tex);
+
+
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glBindVertexArray(R_vao);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, attribs.size());
+
+    glBindVertexArray(0);
+
+
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glUseProgram(0);
+
+    GL_ERRORS();
+
+    glEnable(GL_DEPTH_TEST);
+
+}
+
+
+
+
 
 void PlayMode::draw_black_screen(){
     
@@ -702,7 +846,6 @@ void PlayMode::draw_black_screen(){
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
-
     if (is_changing_scene){
         draw_black_screen();
         return;
@@ -787,7 +930,32 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     //         lines.draw(r.first,r.second);
     //     }
     // }
+
+    {
+        // Draw a sign
+
+        // Currently it can not handle the situation when the sign is occluded by some other objects between it and the camera
+        if(animated == NO){
+            std::string name;
+            glm::vec3 pos;
+            std::tie(name,pos) = find_closest_sign();
+
+            glm::mat4 world_to_clip = player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
+
+            if (!name.empty()){
+                
+                glm::vec4 clip_space = world_to_clip * glm::vec4{pos,1.0};
+                
+                glm::vec3 clip_space_3d = glm::vec3{clip_space.x / clip_space.w,clip_space.y/clip_space.w,clip_space.z/clip_space.w};
+
+                draw_keyboard_sign(clip_space_3d);
+            }
+        }
+
+    }
+
     
+
     
     // Draw a crosshair at the center of the screen
     {
@@ -813,6 +981,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
         lines.draw(ph_0, ph_1);
         glEnable(GL_DEPTH_TEST);
     }
+
+    
     
     //draw_image(image_vao, shadow_depth_tex, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.4f, 0.4f, 0.2f, 0.2f);
     
@@ -824,6 +994,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 // TODO exclude player collider?
 void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     if (!player.has_paint_ability) {
+        text_display.add_text(std::vector<std::string>{"You want to use your power, but nothing happens"});
         return;
     }
     
@@ -869,6 +1040,21 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
             scene->wf_obj_pass_map.erase(c->name);
         }
         d->wireframe_info.draw_frame = false;
+
+
+        // If this is the compass, trigger scenc change logic
+        if(c->name.find("frontroom")!=std::string::npos){
+            is_changing_scene = true;
+            start_timepoint = std::chrono::system_clock::now();
+            //change to foodworld?
+            scene = scene_map[FOODSCENE];
+            text_display.remove_all_text();
+            text_display.deactivate();
+            walkmesh = &foodworld_walkmeshes->lookup("WalkMesh");
+            initialize_player();
+        }
+
+
     } else {
         // remove bounding box
         if (scene->wf_obj_block_map.count(c->name)) {
@@ -891,6 +1077,8 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     if (c->name.find("Paintbrush") != std::string::npos) {
         player.has_paint_ability = true;
     }
+
+    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
 }
 
 void PlayMode::update_wireframe() {
@@ -1019,112 +1207,7 @@ void PlayMode::update_wireframe() {
 }
 
 
-// prefix_on(off)_(onetime)_xxxxx
-// on means draw full color at first
-// check if there is a prefix_on(off)_(onetime)_xxxxx_invisible
-void Scene::initialize_wireframe_objects(const std::string &prefix) {
-    for (const auto &c: colliders) {
-        if (c->name.find(prefix) != std::string::npos) {
-            wireframe_objects.push_back(c);
-            // Only one time?
-            auto d = drawble_name_map[c->name];
-            
-            if (c->name.find("pass") != std::string::npos) {
-                //wf_obj_pass.push_back(c);
-                wf_obj_pass_map[c->name] = c;
-            } else if (c->name.find("block") != std::string::npos) {
-                //wf_obj_block.push_back(c);
-                wf_obj_block_map[c->name] = c;
-            } else {
-                throw std::runtime_error("Unknown type of wireframe object");
-            }
-            
-            if (c->name.find("onetime") != std::string::npos) {
-                d->wireframe_info.one_time_change = true;
-            } else {
-                d->wireframe_info.one_time_change = false;
-            }
-            if (c->name.find("on") != std::string::npos) {
-                d->wireframe_info.draw_frame = false;
-            } else {
-                d->wireframe_info.draw_frame = true;
-                current_wireframe_objects_map[c->name] = c;
-            }
-        }
-    }
-    
-    // remove colliders in wf_obj_block_map && colliders is currently wireframe
-    // remove colliders in wf_obj_pass_map && colliders is currently real
-    for (const auto &it: wf_obj_block_map) {
-        auto d = drawble_name_map[it.second->name];
-        if (d->wireframe_info.draw_frame) {
-            colliders.remove(it.second);
-        }
-    }
-    
-    for (const auto &it: wf_obj_pass_map) {
-        auto d = drawble_name_map[it.second->name];
-        if (!d->wireframe_info.draw_frame) {
-            colliders.remove(it.second);
-        }
-    }
-}
 
-// Should be called after all drawables are loaded into the list
-void Scene::initialize_scene_metadata() {
-    std::shared_ptr<Scene::Drawable> walkmesh_to_remove = nullptr;
-    for (const auto &d: drawables) {
-        std::string name = d->transform->name;
-        if (name == "WalkMesh") {
-            walkmesh_to_remove = d;
-        } else {
-            drawble_name_map[name] = d;
-        }
-    }
-    
-    if (walkmesh_to_remove) {
-        drawables.remove(walkmesh_to_remove);
-    }
-}
-
-
-// Which mesh to lookup?
-// prefix_xxxxx
-void Scene::initialize_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
-    for (const auto &it: meshes->meshes) {
-        const std::string &name = it.first;
-        auto mesh = it.second;
-        if (name.find(prefix) != std::string::npos || name == "Player") {
-            glm::vec3 min = mesh.min;
-            glm::vec3 max = mesh.max;
-            auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
-            auto d = drawble_name_map[name];
-            collider->update_BBox(d->transform);
-            colliders.push_back(collider);
-            collider_name_map[name] = collider;
-        }
-    }
-}
-
-
-void Scene::initialize_text_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
-    for (const auto &it: meshes->meshes) {
-        const std::string &name = it.first;
-        auto mesh = it.second;
-        if (name.find(prefix) != std::string::npos) {
-            glm::vec3 min = mesh.min;
-            glm::vec3 max = mesh.max;
-            auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
-            auto d = drawble_name_map[name];
-            if (d == nullptr) {
-                continue;
-            }
-            collider->update_BBox(d->transform);
-            text_colliders.push_back(collider);
-            textcollider_name_map[name] = collider;
-        }
-    }
-}
 
 
 // Item to unlock must be a collider
@@ -1286,6 +1369,74 @@ PlayMode::mouse_collider_check(const std::string &prefix, bool use_crosshair) {
 }
 
 
+
+
+std::pair<std::shared_ptr<Scene::Collider>, float>
+PlayMode::mouse_bread_check(const std::string &prefix, bool use_crosshair) {
+    float ux, uy;
+    
+    if (!use_crosshair) {
+        if (SDL_GetRelativeMouseMode() != SDL_FALSE)
+            return std::make_pair(nullptr, 0);
+        
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        
+        y = 720 - y;
+        
+        ux = ((float) x - 640.0f) / 640.0f;
+        uy = ((float) y - 360.0f) / 360.0f;
+    } else {
+        ux = 0.0;
+        uy = 0.0;
+    }
+    
+    
+    
+    
+    // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
+    glm::vec4 nearpoint{ux, uy, -1.0, 1.0};
+    
+    glm::mat4 world_to_clip =
+            player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
+    
+    glm::mat4 inv_world_to_clip = glm::inverse(world_to_clip);
+    
+    glm::vec4 near_result = inv_world_to_clip * nearpoint;
+    near_result /= near_result.w;
+    
+    // Camera world position should be obtained like this
+    auto camera_to_world = player.camera->transform->make_local_to_world();
+    glm::vec3 camera_world_location = {camera_to_world[3][0], camera_to_world[3][1], camera_to_world[3][2]};
+    
+    
+    Ray dir = Ray{camera_world_location,
+                  glm::vec3{near_result.x, near_result.y, near_result.z} - camera_world_location};
+    
+    std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
+    
+    for (const auto &it: scene->breadcollider_name_map) {
+        auto c = it.second;
+        if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
+            bool intersected;
+            float t;
+            std::tie(intersected, t) = c->ray_intersect(dir);
+            if (intersected) {
+                if (t < dir.t) {
+                    dir.t = t;
+                    intersected_collider = c;
+                }
+            }
+        }
+        
+        
+    }
+    
+    float distance = glm::length(dir.d * dir.t);
+    return std::make_pair(intersected_collider, distance);
+}
+
+
 ColliderType PlayMode::check_collider_type(std::shared_ptr<Scene::Collider> c) {
     if (!c) {
         std::runtime_error("NULL pointer");
@@ -1350,6 +1501,7 @@ void PlayMode::initialize_scene(Load<Scene> scene_to_copy, Load<MeshBuffer> mesh
     new_scene->initialize_collider("col_", meshbuffer_param);
     new_scene->initialize_wireframe_objects("col_wire");
     new_scene->initialize_text_collider("text_", meshbuffer_param);
+    new_scene->initialize_bread("bread_",meshbuffer_param);
 
     scene_map[scene_param_type] = new_scene;
 }
@@ -1429,6 +1581,7 @@ void PlayMode::initialize_player(){
                 if (evt.key.keysym.sym == SDLK_ESCAPE) {
                     if(text_display.is_activated()){
                         text_display.deactivate();
+                        text_display.remove_all_text();
                     }else{
                         SDL_SetRelativeMouseMode(SDL_FALSE);
                     }
@@ -1478,7 +1631,7 @@ void PlayMode::initialize_player(){
                                     // Do not update if player intersects the object
                                     if (!player_collider->intersect(c)){
                                         update_wireframe(c);
-                                        text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});  
+                                        //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
                                     }else{
                                         text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});  
                                     }
@@ -1517,26 +1670,32 @@ void PlayMode::initialize_player(){
                         }
                         
                         
+                    } else{
+                        std::tie(c,distance) = mouse_bread_check("bread_",true);
+                        if(c){
+                            if(player.has_bounce_ability){
+                                glm::vec3 location;
+                                if (endsWith(c->name,"_1")){
+                                    location = (c->min + c->max) / 2.0f;
+                                }else{
+                                    std::runtime_error("Unknown bread collider");
+                                }
+
+                                text_display.add_text(std::vector<std::string>{"You are jumping to a bread!"});
+                                text_display.activate();
+
+                                get_off_walkmesh();
+                                set_bouncing_spline(location);
+                                player.bounce_stage = 1;
+                                player.bounce_destination = scene->bread_bouncelocation_map[c];
+                            }
+                        }
                     }
                     
                     //update_wireframe();
                     return true;
                 } 
 
-                //debug key
-                else if (evt.key.keysym.sym == SDLK_j){
-                    get_off_walkmesh();
-                    set_bouncing_spline();
-                } 
-                //debug scene change
-                else if (evt.key.keysym.sym == SDLK_DELETE){
-                    is_changing_scene = true;
-                    start_timepoint = std::chrono::system_clock::now();
-                    //change to foodworld?
-                    walkmesh = foodworld_walkmesh;
-                    scene = scene_map[FOODSCENE];
-                    initialize_player();
-                }
             } else if (evt.type == SDL_KEYUP) {
                 if (evt.key.keysym.sym == SDLK_a) {
                     left.pressed = false;
@@ -1605,7 +1764,7 @@ void PlayMode::get_off_walkmesh(){
 }
 
 
-void PlayMode::set_bouncing_spline(){
+void PlayMode::set_bouncing_spline(glm::vec3 destination){
 
     std::cerr << "This is a debug test for spline interpolation of player location" << std::endl;
 
@@ -1615,14 +1774,15 @@ void PlayMode::set_bouncing_spline(){
     auto player_to_world = player.transform->make_local_to_world();
     glm::vec3 player_world_location = {player_to_world[3][0], player_to_world[3][1], player_to_world[3][2]};
 
-    glm::vec3 middle_point = player_world_location;
-    middle_point.z += 3;
-    middle_point.x += 0.5;
+    glm::vec3 bounce_location = destination;
+
+    // Add a control point to the spline?
+    glm::vec3 middle_point;
+    middle_point.z  = destination.z + 2;
+    middle_point.x  = (destination.x - player_world_location.x) / 3 + player_world_location.x;
+    middle_point.y  = (destination.y - player_world_location.y) / 3 + player_world_location.y;
 
 
-    glm::vec3 bounce_location = player_world_location;
-    bounce_location.z += 3;
-    bounce_location.x += 2;
 
     player.player_bounce_spline.clear();
     player.interpolation_time = 0.0f;
@@ -1634,3 +1794,44 @@ void PlayMode::set_bouncing_spline(){
     player.player_bounce_spline.set(0.5f,middle_point);
 
 }
+
+
+
+std::pair<std::string,glm::vec3>  PlayMode::find_closest_sign(){
+        //float distance = std::numeric_limits<float>::max();
+        float distance = player.SIGHT_DISTANCE; // can see this far
+        auto here = player.transform->position;
+        //std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
+        std::string selected;
+        
+        // find the closest text bearer
+        for (const auto &[name, mesh]: textBearers) {
+            if (!endsWith(name, "_m")) {
+                continue;
+            }
+            auto transform = nameToTransform[name];
+            auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+            //std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
+            float newdistance = glm::distance(here, there);
+            //std::cout << "distance: " << newdistance << " name: " << name << std::endl;
+            if (newdistance < distance) {
+                distance = newdistance;
+                selected = name;
+            }
+        }
+        if (!selected.empty()) {
+            //std::cout << "selected: " << selected << std::endl;
+            assert(selected.back() == 'm');
+            std::string selectedCamera = textBearerCams[selected];
+            auto t = nameToTransform[selected];
+            auto selectedToWorld = t->make_local_to_world();
+            auto world_coord = selectedToWorld * glm::vec4(t->position,1.0);
+            //auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
+            return std::make_pair(selected,world_coord);
+        } else {
+            //std::cout << "No readable sign in range" << std::endl;
+            return std::make_pair(selected,glm::vec3{0.0f});
+        }
+
+
+    }
