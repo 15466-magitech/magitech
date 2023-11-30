@@ -1225,7 +1225,7 @@ PlayMode::mouse_collider_check(const std::string &prefix, bool use_crosshair) {
     
     if (!use_crosshair) {
         if (SDL_GetRelativeMouseMode() != SDL_FALSE)
-            return std::make_pair(nullptr, 0);
+            return std::make_pair(nullptr, 0.0f);
         
         int x, y;
         SDL_GetMouseState(&x, &y);
