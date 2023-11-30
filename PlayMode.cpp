@@ -1697,7 +1697,7 @@ void PlayMode::initialize_player(){
                         std::tie(c,distance) = mouse_bread_check("bread_",true);
                         if(c){
                             if(player.has_bounce_ability){
-                                glm::vec3 location;
+                                glm::vec3 location{0.0f, 0.0f, 0.0f};
                                 if (endsWith(c->name,"_1")){
                                     location = (c->min + c->max) / 2.0f;
                                 }else{
