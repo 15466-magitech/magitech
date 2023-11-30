@@ -25,4 +25,5 @@ CMakeLists.txt
 cmake-build-debug/
 .idea/
 .vscode/
+.vs/
 .DS_STORE

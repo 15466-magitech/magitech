@@ -28,7 +28,7 @@ void load_opus(std::string const &filename, std::vector< float > *data_) {
 	//get length in samples:
 	ogg_int64_t length = op_pcm_total(op.get(), -1);
 	if (length >= 0) {
-		data.reserve(length);
+		data.reserve((unsigned int) length);
 	} else {
 		std::cerr << "WARNING: cannot estimate length of '" << filename << "', loading may be slow." << std::endl;
 		length = 0;
