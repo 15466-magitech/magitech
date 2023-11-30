@@ -53,6 +53,12 @@ bool Terminal::handle_key(SDL_Keycode key) {
                     text_display.text.erase(text_display.text.begin());
                 }
                 TerminalCommandHandler::handle_all(Command::Mirage);
+            } else if (text_display.text.back() == "cook") {
+                text_display.text.emplace_back("making a dish...");
+                if (text_display.text.size() > text_display.rows) {
+                    text_display.text.erase(text_display.text.begin());
+                }
+                TerminalCommandHandler::handle_all(Command::Cook);
             } else if (!text_display.text.back().empty()) {
                 text_display.text.emplace_back("invalid command");
                 if (text_display.text.size() > text_display.rows) {

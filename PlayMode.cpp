@@ -675,7 +675,7 @@ void PlayMode::draw_keyboard_sign(glm::vec3 clip_space){
     //actually draw some textured quads!
     std::vector< Vert > attribs;
 
-    clip_space.y += 0.1;
+    clip_space.y += 0.1f;
 
     attribs.emplace_back(glm::vec3(clip_space.x - 0.03f, clip_space.y - 0.03f, 0.0f), glm::vec2(0.0f, 0.0f));
     attribs.emplace_back(glm::vec3(clip_space.x - 0.03f, clip_space.y + 0.03f, 0.0f), glm::vec2(0.0f, 1.0f));
@@ -700,7 +700,7 @@ void PlayMode::draw_keyboard_sign(glm::vec3 clip_space){
 
     glBindVertexArray(R_vao);
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, attribs.size());
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei) attribs.size());
 
     glBindVertexArray(0);
 
@@ -1029,7 +1029,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     auto d = scene->drawble_name_map[c->name];
 
 
-    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});  
+    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
     
     if (is_current_wireframe) {
         scene->current_wireframe_objects_map.erase(c->name);
@@ -1391,7 +1391,7 @@ PlayMode::mouse_bread_check(const std::string &prefix, bool use_crosshair) {
     
     if (!use_crosshair) {
         if (SDL_GetRelativeMouseMode() != SDL_FALSE)
-            return std::make_pair(nullptr, 0);
+            return std::make_pair(nullptr, 0.0f);
         
         int x, y;
         SDL_GetMouseState(&x, &y);
@@ -1552,6 +1552,7 @@ void PlayMode::initialize_player(){
 
 
     player.add_component<TerminalCommandHandler>([this](Command command) {
+        std::string pb_object_name = "col_wire_off_block_Paintbrush";
         switch (command) {
             case Command::OpenSesame:
                 //unlock("unlock_");
@@ -1561,7 +1562,6 @@ void PlayMode::initialize_player(){
                 break;
             case Command::Mirage:
                 //activate paintbrush
-                std::string pb_object_name = "col_wire_off_block_Paintbrush";
                 if (!player.has_paint_ability) {
                     auto pb = scene->collider_name_map[pb_object_name];
                     
@@ -1585,6 +1585,9 @@ void PlayMode::initialize_player(){
                 
                 //update_wireframe();
                 std::cout << "command was open mirage!\n";
+                break;
+            case Command::Cook:
+                cook();
                 break;
         }
     });
@@ -1648,19 +1651,19 @@ void PlayMode::initialize_player(){
                                         // Do not update if player intersects the object
                                         if (!player_collider->intersect(c)){
                                             update_wireframe(c);
-                                            //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});  
+                                            //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
                                         }else{
-                                            text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});  
+                                            text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});
                                         }
                                         
                                     }else{
-                                        text_display.add_text(std::vector<std::string>{"You are too far away from theo object"});  
+                                        text_display.add_text(std::vector<std::string>{"You are too far away from theo object"});
                                     }
 
                                     text_display.activate();
 
                                 }
-                                break;  
+                                break;
                                
                             }
                             
@@ -1674,7 +1677,7 @@ void PlayMode::initialize_player(){
                                         scene->drawble_name_map.erase(c->name);
                                         scene->colliders.remove(c);
                                         scene->collider_name_map.erase(c->name);
-                                        text_display.add_text(std::vector<std::string>{"You unlocked the door!"});  
+                                        text_display.add_text(std::vector<std::string>{"You unlocked the door!"});
                                         text_display.activate();
                                         break;
                                     }
@@ -1694,7 +1697,7 @@ void PlayMode::initialize_player(){
                         std::tie(c,distance) = mouse_bread_check("bread_",true);
                         if(c){
                             if(player.has_bounce_ability){
-                                glm::vec3 location;
+                                glm::vec3 location{0.0f, 0.0f, 0.0f};
                                 if (endsWith(c->name,"_1")){
                                     location = (c->min + c->max) / 2.0f;
                                 }else{
@@ -1714,7 +1717,7 @@ void PlayMode::initialize_player(){
                     
                     //update_wireframe();
                     return true;
-                } 
+                }
 
             } else if (evt.type == SDL_KEYUP) {
                 if (evt.key.keysym.sym == SDLK_a) {
@@ -1852,6 +1855,26 @@ std::pair<std::string,glm::vec3>  PlayMode::find_closest_sign(){
             //std::cout << "No readable sign in range" << std::endl;
             return std::make_pair(selected,glm::vec3{0.0f});
         }
-
-
     }
+
+void PlayMode::cook() {
+    for (auto &[name, _] : scene->drawble_name_map) {
+        std::cout << "collider has name " << name << "\n";
+    }
+    const std::unordered_map<std::string, bool> ingredients {
+            {"col_wire_off_pass_breadstick", true}
+    };
+    bool correct = true;
+    for (auto &[name, required] : ingredients) {
+        bool is_current_wireframe = scene->drawble_name_map[name]->wireframe_info.draw_frame;
+        if (is_current_wireframe == required) {
+            correct = false;
+        }
+    }
+    if (correct) {
+        terminal.text_display.add_text({"You made some delicious food. Now you can bounce on bread."});
+        player.has_bounce_ability = true;
+    } else {
+        terminal.text_display.add_text({"You used the wrong ingredients... it tastes awful :("});
+    }
+}
