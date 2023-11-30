@@ -83,6 +83,7 @@ struct PlayMode : Mode {
         //player ability
         bool has_paint_ability = false;
         bool has_unlock_ability = false;
+        bool has_bounce_ability = true;
 
         static constexpr float SIGHT_DISTANCE = 5.0f;
 
@@ -94,9 +95,12 @@ struct PlayMode : Mode {
         // arcsin 0.1 ~ 6 degrees
         static constexpr glm::vec3 defaultCameraRotation = glm::vec3(glm::radians(84.0f), glm::radians(0.0f), glm::radians(0.0f));
 
+        // Bread bouncing logic
         bool on_walkmesh = true;
         Spline<glm::vec3> player_bounce_spline;
         float interpolation_time = 0.0f;
+        uint8_t bounce_stage = 0; // 0 means not in bouce stage. 1 means from location to bread. 2 means from bread to destination
+        glm::vec3 bounce_destination{0.0f};
 
     } player;
 
@@ -127,12 +131,13 @@ struct PlayMode : Mode {
     // Mouse-collider check return the collider and the distance pair
     std::pair<std::shared_ptr<Scene::Collider>,float> mouse_collider_check(const std::string& prefix="col_",bool use_crosshair = false);
     std::pair<std::shared_ptr<Scene::Collider>,float> mouse_text_check(const std::string& prefix="text_",bool use_crosshair = false);
+    std::pair<std::shared_ptr<Scene::Collider>,float> mouse_bread_check(const std::string& prefix="bread_",bool use_crosshair = false);
     ColliderType check_collider_type(std::shared_ptr<Scene::Collider> c);
 
 
     // Bouncing logic
     void get_off_walkmesh();
-    void set_bouncing_spline();
+    void set_bouncing_spline(glm::vec3);
 
 
     //Scene change

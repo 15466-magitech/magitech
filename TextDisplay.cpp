@@ -78,3 +78,8 @@ void TextDisplay::add_text(const std::vector<std::string> &strs) {
 bool TextDisplay::is_activated(){
     return _is_activated;
 }
+
+void TextDisplay::remove_all_text(){
+    text.clear();
+    return;
+}

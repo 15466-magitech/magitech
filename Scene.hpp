@@ -197,8 +197,14 @@ struct Scene {
 	std::list< std::shared_ptr<Collider> > colliders;
 	std::unordered_map<std::string, std::shared_ptr<Collider>> collider_name_map;
 
+	//text data structure
 	std::list<std::shared_ptr<Collider>> text_colliders;
 	std::map<std::string, std::shared_ptr<Collider>> textcollider_name_map;
+
+	//bread data structure
+	std::list<std::shared_ptr<Collider>> bread_colliders;
+	std::map<std::string, std::shared_ptr<Collider>> breadcollider_name_map;
+	std::map<std::shared_ptr<Collider>, glm::vec3> bread_bouncelocation_map;
 
 
 	// Wireframe logics
@@ -209,6 +215,11 @@ struct Scene {
     std::unordered_map<std::string, std::shared_ptr<Collider>> wf_obj_pass_map;
     //std::list<std::shared_ptr<Scene::Collider>> wf_obj_block; // Normal object, blocked when it's real by bbox
     std::unordered_map<std::string, std::shared_ptr<Collider>> wf_obj_block_map;
+
+
+
+	
+
 
 	//The "draw" function provides a convenient way to pass all the things in a scene to OpenGL:
 	void draw(Camera const &camera, bool draw_frame = false) const;
@@ -250,4 +261,6 @@ struct Scene {
     void initialize_collider(const std::string &prefix_pattern, Load<MeshBuffer> meshes);
 
     void initialize_text_collider(const std::string &prefix_pattern, Load<MeshBuffer> meshes);
+
+	void initialize_bread(const std::string &prefix_pattern, Load<MeshBuffer> meshes);
 };

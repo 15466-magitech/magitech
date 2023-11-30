@@ -360,6 +360,7 @@ void PlayMode::update(float elapsed) {
         splinerotation.set(1.0f, glm::quat(
                 glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
         text_display.deactivate();
+        text_display.remove_all_text();
     }
     
     //player walking:
@@ -485,10 +486,27 @@ void PlayMode::update(float elapsed) {
 
             // Get back to walkmesh mode as we finish the interpolation
             if (player.interpolation_time >= 1.0){
-                player.interpolation_time = 0.0;
-                player.on_walkmesh = true;
-                player.at = walkmesh->nearest_walk_point(player.transform->position);
-                player.transform->position = walkmesh->to_world_point(player.at);
+                // Check if this is the second jump?
+                if (player.bounce_stage == 1){
+                    player.interpolation_time = 0.0;
+                    player.bounce_stage = 2;
+                    set_bouncing_spline(player.bounce_destination);
+                    player.bounce_destination = glm::vec3{0.0f};
+
+                }else{
+                    if(player.bounce_stage != 2){
+                        std::runtime_error("Wrong Bounce Stage");
+                    }
+                    player.interpolation_time = 0.0;
+                    player.on_walkmesh = true;
+                    player.at = walkmesh->nearest_walk_point(player.transform->position);
+                    player.transform->position = walkmesh->to_world_point(player.at);
+                    player.bounce_stage = 0;
+                }
+
+
+
+
             }
         }
         
@@ -1018,112 +1036,7 @@ void PlayMode::update_wireframe() {
 }
 
 
-// prefix_on(off)_(onetime)_xxxxx
-// on means draw full color at first
-// check if there is a prefix_on(off)_(onetime)_xxxxx_invisible
-void Scene::initialize_wireframe_objects(const std::string &prefix) {
-    for (const auto &c: colliders) {
-        if (c->name.find(prefix) != std::string::npos) {
-            wireframe_objects.push_back(c);
-            // Only one time?
-            auto d = drawble_name_map[c->name];
-            
-            if (c->name.find("pass") != std::string::npos) {
-                //wf_obj_pass.push_back(c);
-                wf_obj_pass_map[c->name] = c;
-            } else if (c->name.find("block") != std::string::npos) {
-                //wf_obj_block.push_back(c);
-                wf_obj_block_map[c->name] = c;
-            } else {
-                throw std::runtime_error("Unknown type of wireframe object");
-            }
-            
-            if (c->name.find("onetime") != std::string::npos) {
-                d->wireframe_info.one_time_change = true;
-            } else {
-                d->wireframe_info.one_time_change = false;
-            }
-            if (c->name.find("on") != std::string::npos) {
-                d->wireframe_info.draw_frame = false;
-            } else {
-                d->wireframe_info.draw_frame = true;
-                current_wireframe_objects_map[c->name] = c;
-            }
-        }
-    }
-    
-    // remove colliders in wf_obj_block_map && colliders is currently wireframe
-    // remove colliders in wf_obj_pass_map && colliders is currently real
-    for (const auto &it: wf_obj_block_map) {
-        auto d = drawble_name_map[it.second->name];
-        if (d->wireframe_info.draw_frame) {
-            colliders.remove(it.second);
-        }
-    }
-    
-    for (const auto &it: wf_obj_pass_map) {
-        auto d = drawble_name_map[it.second->name];
-        if (!d->wireframe_info.draw_frame) {
-            colliders.remove(it.second);
-        }
-    }
-}
 
-// Should be called after all drawables are loaded into the list
-void Scene::initialize_scene_metadata() {
-    std::shared_ptr<Scene::Drawable> walkmesh_to_remove = nullptr;
-    for (const auto &d: drawables) {
-        std::string name = d->transform->name;
-        if (name == "WalkMesh") {
-            walkmesh_to_remove = d;
-        } else {
-            drawble_name_map[name] = d;
-        }
-    }
-    
-    if (walkmesh_to_remove) {
-        drawables.remove(walkmesh_to_remove);
-    }
-}
-
-
-// Which mesh to lookup?
-// prefix_xxxxx
-void Scene::initialize_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
-    for (const auto &it: meshes->meshes) {
-        const std::string &name = it.first;
-        auto mesh = it.second;
-        if (name.find(prefix) != std::string::npos || name == "Player") {
-            glm::vec3 min = mesh.min;
-            glm::vec3 max = mesh.max;
-            auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
-            auto d = drawble_name_map[name];
-            collider->update_BBox(d->transform);
-            colliders.push_back(collider);
-            collider_name_map[name] = collider;
-        }
-    }
-}
-
-
-void Scene::initialize_text_collider(const std::string &prefix, Load<MeshBuffer> meshes) {
-    for (const auto &it: meshes->meshes) {
-        const std::string &name = it.first;
-        auto mesh = it.second;
-        if (name.find(prefix) != std::string::npos) {
-            glm::vec3 min = mesh.min;
-            glm::vec3 max = mesh.max;
-            auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
-            auto d = drawble_name_map[name];
-            if (d == nullptr) {
-                continue;
-            }
-            collider->update_BBox(d->transform);
-            text_colliders.push_back(collider);
-            textcollider_name_map[name] = collider;
-        }
-    }
-}
 
 
 // Item to unlock must be a collider
@@ -1264,6 +1177,74 @@ PlayMode::mouse_collider_check(const std::string &prefix, bool use_crosshair) {
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
     
     for (const auto &it: scene->collider_name_map) {
+        auto c = it.second;
+        if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
+            bool intersected;
+            float t;
+            std::tie(intersected, t) = c->ray_intersect(dir);
+            if (intersected) {
+                if (t < dir.t) {
+                    dir.t = t;
+                    intersected_collider = c;
+                }
+            }
+        }
+        
+        
+    }
+    
+    float distance = glm::length(dir.d * dir.t);
+    return std::make_pair(intersected_collider, distance);
+}
+
+
+
+
+std::pair<std::shared_ptr<Scene::Collider>, float>
+PlayMode::mouse_bread_check(const std::string &prefix, bool use_crosshair) {
+    float ux, uy;
+    
+    if (!use_crosshair) {
+        if (SDL_GetRelativeMouseMode() != SDL_FALSE)
+            return std::make_pair(nullptr, 0);
+        
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        
+        y = 720 - y;
+        
+        ux = ((float) x - 640.0f) / 640.0f;
+        uy = ((float) y - 360.0f) / 360.0f;
+    } else {
+        ux = 0.0;
+        uy = 0.0;
+    }
+    
+    
+    
+    
+    // nearest plane. In the basecode, nearest plane will be mapped to -1.0 and far plane(inifinity) will be mapped to 1.0
+    glm::vec4 nearpoint{ux, uy, -1.0, 1.0};
+    
+    glm::mat4 world_to_clip =
+            player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
+    
+    glm::mat4 inv_world_to_clip = glm::inverse(world_to_clip);
+    
+    glm::vec4 near_result = inv_world_to_clip * nearpoint;
+    near_result /= near_result.w;
+    
+    // Camera world position should be obtained like this
+    auto camera_to_world = player.camera->transform->make_local_to_world();
+    glm::vec3 camera_world_location = {camera_to_world[3][0], camera_to_world[3][1], camera_to_world[3][2]};
+    
+    
+    Ray dir = Ray{camera_world_location,
+                  glm::vec3{near_result.x, near_result.y, near_result.z} - camera_world_location};
+    
+    std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
+    
+    for (const auto &it: scene->breadcollider_name_map) {
         auto c = it.second;
         if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
             bool intersected;
@@ -1428,6 +1409,7 @@ void PlayMode::initialize_player(){
                 if (evt.key.keysym.sym == SDLK_ESCAPE) {
                     if(text_display.is_activated()){
                         text_display.deactivate();
+                        text_display.remove_all_text();
                     }else{
                         SDL_SetRelativeMouseMode(SDL_FALSE);
                     }
@@ -1516,17 +1498,28 @@ void PlayMode::initialize_player(){
                         }
                         
                         
+                    } else{
+                        std::tie(c,distance) = mouse_bread_check("bread_",true);
+                        if(c){
+                            if(player.has_bounce_ability){
+                                glm::vec3 location;
+                                if (endsWith(c->name,"_1")){
+                                    location = (c->min + c->max) / 2.0f;
+                                }else{
+                                    std::runtime_error("Unknown bread collider");
+                                }
+                                get_off_walkmesh();
+                                set_bouncing_spline(location);
+                                player.bounce_stage = 1;
+                                player.bounce_destination = scene->bread_bouncelocation_map[c];
+                            }
+                        }
                     }
                     
                     //update_wireframe();
                     return true;
                 } 
 
-                //debug key
-                else if (evt.key.keysym.sym == SDLK_j){
-                    get_off_walkmesh();
-                    set_bouncing_spline();
-                } 
                 //debug scene change
                 else if (evt.key.keysym.sym == SDLK_DELETE){
                     is_changing_scene = true;
@@ -1603,7 +1596,7 @@ void PlayMode::get_off_walkmesh(){
 }
 
 
-void PlayMode::set_bouncing_spline(){
+void PlayMode::set_bouncing_spline(glm::vec3 destination){
 
     std::cerr << "This is a debug test for spline interpolation of player location" << std::endl;
 
@@ -1613,14 +1606,15 @@ void PlayMode::set_bouncing_spline(){
     auto player_to_world = player.transform->make_local_to_world();
     glm::vec3 player_world_location = {player_to_world[3][0], player_to_world[3][1], player_to_world[3][2]};
 
-    glm::vec3 middle_point = player_world_location;
-    middle_point.z += 3;
-    middle_point.x += 0.5;
+    glm::vec3 bounce_location = destination;
+
+    // Add a control point to the spline?
+    glm::vec3 middle_point;
+    middle_point.z  = destination.z + 2;
+    middle_point.x  = (destination.x - player_world_location.x) / 3;
+    middle_point.y  = (destination.y - player_world_location.y) / 3;
 
 
-    glm::vec3 bounce_location = player_world_location;
-    bounce_location.z += 3;
-    bounce_location.x += 2;
 
     player.player_bounce_spline.clear();
     player.interpolation_time = 0.0f;
