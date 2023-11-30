@@ -1538,6 +1538,7 @@ void PlayMode::initialize_player(){
 
 
     player.add_component<TerminalCommandHandler>([this](Command command) {
+        std::string pb_object_name = "col_wire_off_block_Paintbrush";
         switch (command) {
             case Command::OpenSesame:
                 //unlock("unlock_");
@@ -1547,7 +1548,6 @@ void PlayMode::initialize_player(){
                 break;
             case Command::Mirage:
                 //activate paintbrush
-                std::string pb_object_name = "col_wire_off_block_Paintbrush";
                 if (!player.has_paint_ability) {
                     auto pb = scene->collider_name_map[pb_object_name];
                     
@@ -1571,6 +1571,9 @@ void PlayMode::initialize_player(){
                 
                 //update_wireframe();
                 std::cout << "command was open mirage!\n";
+                break;
+            case Command::Cook:
+                cook();
                 break;
         }
     });
@@ -1633,11 +1636,11 @@ void PlayMode::initialize_player(){
                                         update_wireframe(c);
                                         //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
                                     }else{
-                                        text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});  
+                                        text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});
                                     }
-                                       
+                                    
                                 }else{
-                                    text_display.add_text(std::vector<std::string>{"You are too far away from theo object"});  
+                                    text_display.add_text(std::vector<std::string>{"You are too far away from theo object"});
                                 }
 
                                 text_display.activate();
@@ -1654,7 +1657,7 @@ void PlayMode::initialize_player(){
                                         scene->drawble_name_map.erase(c->name);
                                         scene->colliders.remove(c);
                                         scene->collider_name_map.erase(c->name);
-                                        text_display.add_text(std::vector<std::string>{"You unlocked the door!"});  
+                                        text_display.add_text(std::vector<std::string>{"You unlocked the door!"});
                                         text_display.activate();
                                         break;
                                     }
@@ -1694,7 +1697,7 @@ void PlayMode::initialize_player(){
                     
                     //update_wireframe();
                     return true;
-                } 
+                }
 
             } else if (evt.type == SDL_KEYUP) {
                 if (evt.key.keysym.sym == SDLK_a) {
@@ -1832,6 +1835,26 @@ std::pair<std::string,glm::vec3>  PlayMode::find_closest_sign(){
             //std::cout << "No readable sign in range" << std::endl;
             return std::make_pair(selected,glm::vec3{0.0f});
         }
-
-
     }
+
+void PlayMode::cook() {
+    for (auto &[name, _] : scene->drawble_name_map) {
+        std::cout << "collider has name " << name << "\n";
+    }
+    const std::unordered_map<std::string, bool> ingredients {
+            {"col_wire_off_pass_breadstick", true}
+    };
+    bool correct = true;
+    for (auto &[name, required] : ingredients) {
+        bool is_current_wireframe = scene->drawble_name_map[name]->wireframe_info.draw_frame;
+        if (is_current_wireframe == required) {
+            correct = false;
+        }
+    }
+    if (correct) {
+        terminal.text_display.add_text({"You made some delicious food. Now you can bounce on bread."});
+        player.has_bounce_ability = true;
+    } else {
+        terminal.text_display.add_text({"You used the wrong ingredients... it tastes awful :("});
+    }
+}

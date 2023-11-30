@@ -82,8 +82,9 @@ struct PlayMode : Mode {
         std::string name = "Player";
 
         //player ability
-        bool has_paint_ability = true; // debug , change it back!
-        bool has_unlock_ability = false;
+        // TODO: change to false
+        bool has_paint_ability = true;
+        bool has_unlock_ability = true;
         bool has_bounce_ability = true;
 
         static constexpr float SIGHT_DISTANCE = 5.0f;
@@ -124,6 +125,7 @@ struct PlayMode : Mode {
     void update_wireframe();
     void update_wireframe(const std::shared_ptr<Scene::Collider>& collider);
 
+    void cook();
 
     std::pair<std::string,glm::vec3> find_closest_sign();
     

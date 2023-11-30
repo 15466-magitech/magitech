@@ -7,7 +7,8 @@
  */
 enum struct Command {
     OpenSesame,
-    Mirage
+    Mirage,
+    Cook
 };
 
 struct TerminalCommandHandler : HandlerComponent<TerminalCommandHandler, void, Command> {
