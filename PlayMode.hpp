@@ -67,7 +67,6 @@ struct PlayMode : Mode {
     //local copy of the game scene (so code can change it during gameplay):
     std::shared_ptr<Scene> scene;
     std::map<scene_type,std::shared_ptr<Scene>> scene_map;
-    scene_type current_scene_type;
     
     //player info:
     struct Player : Entity {

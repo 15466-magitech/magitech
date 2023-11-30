@@ -73,7 +73,7 @@ Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 
 // Currently there is no foodworld scene
 Load<MeshBuffer> foodworld_meshes(LoadTagDefault,[]() -> MeshBuffer const * {
-    MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
+    MeshBuffer const *ret = new MeshBuffer(data_path("foodworld.pnct"));
     foodworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     foodworld_meshes_for_rocket_color_texture_program = ret->make_vao_for_program(rocket_color_texture_program->program);
 
@@ -147,7 +147,7 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
 
 Load<Scene> foodworld_scene(LoadTagDefault,[]() -> Scene const * {
     return new Scene(
-            data_path("artworld.scene"),
+            data_path("foodworld.scene"),
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 // keep transforms available
                 nameToTransform[mesh_name] = transform;
@@ -164,11 +164,11 @@ Load<Scene> foodworld_scene(LoadTagDefault,[]() -> Scene const * {
                     //drawable->pipeline = lit_color_texture_program_pipeline;
                     //drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
                     drawable->pipeline = rocket_color_texture_program_pipeline;
-                    drawable->pipeline.vao = artworld_meshes_for_rocket_color_texture_program;
+                    drawable->pipeline.vao = foodworld_meshes_for_rocket_color_texture_program;
                     drawable->specular_info.shininess = 10.0;
                 } else {
                     drawable->pipeline = lit_color_texture_program_pipeline;
-                    drawable->pipeline.vao = artworld_meshes_for_lit_color_texture_program;
+                    drawable->pipeline.vao = foodworld_meshes_for_lit_color_texture_program;
                     drawable->specular_info.shininess = 10.0;
                 }
                 
@@ -182,15 +182,17 @@ Load<Scene> foodworld_scene(LoadTagDefault,[]() -> Scene const * {
 });
 
 WalkMesh const *walkmesh = nullptr;
+WalkMesh const *artworld_walkmesh = nullptr;
 Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
     auto *ret = new WalkMeshes(data_path("artworld.w"));
-    walkmesh = &ret->lookup("WalkMesh");
+    artworld_walkmesh = &ret->lookup("WalkMesh");
     return ret;
 });
 
+WalkMesh const *foodworld_walkmesh = nullptr;
 Load<WalkMeshes> foodworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
-    auto *ret = new WalkMeshes(data_path("artworld.w"));
-    walkmesh = &ret->lookup("WalkMesh");
+    auto *ret = new WalkMeshes(data_path("foodworld.w"));
+    foodworld_walkmesh = &ret->lookup("WalkMesh");
     return ret;
 });
 
@@ -249,10 +251,9 @@ PlayMode::PlayMode(SDL_Window *window)
 
 
     scene = scene_map[ARTSCENE];
-
-    initialize_player();
+    walkmesh = artworld_walkmesh;
     
-
+    initialize_player();
     
     // this activates the player component stuff
     terminal.activate();
@@ -1532,6 +1533,7 @@ void PlayMode::initialize_player(){
                     is_changing_scene = true;
                     start_timepoint = std::chrono::system_clock::now();
                     //change to foodworld?
+                    walkmesh = foodworld_walkmesh;
                     scene = scene_map[FOODSCENE];
                     initialize_player();
                 }
