@@ -675,7 +675,7 @@ void PlayMode::draw_keyboard_sign(glm::vec3 clip_space){
     //actually draw some textured quads!
     std::vector< Vert > attribs;
 
-    clip_space.y += 0.1;
+    clip_space.y += 0.1f;
 
     attribs.emplace_back(glm::vec3(clip_space.x - 0.03f, clip_space.y - 0.03f, 0.0f), glm::vec2(0.0f, 0.0f));
     attribs.emplace_back(glm::vec3(clip_space.x - 0.03f, clip_space.y + 0.03f, 0.0f), glm::vec2(0.0f, 1.0f));
