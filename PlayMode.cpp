@@ -73,7 +73,7 @@ Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 
 // Currently there is no foodworld scene
 Load<MeshBuffer> foodworld_meshes(LoadTagDefault,[]() -> MeshBuffer const * {
-    MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
+    MeshBuffer const *ret = new MeshBuffer(data_path("foodworld.pnct"));
     foodworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
     foodworld_meshes_for_rocket_color_texture_program = ret->make_vao_for_program(rocket_color_texture_program->program);
 
@@ -147,7 +147,7 @@ Load<Scene> artworld_scene(LoadTagDefault, []() -> Scene const * {
 
 Load<Scene> foodworld_scene(LoadTagDefault,[]() -> Scene const * {
     return new Scene(
-            data_path("artworld.scene"),
+            data_path("foodworld.scene"),
             [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name) {
                 // keep transforms available
                 nameToTransform[mesh_name] = transform;
@@ -189,7 +189,7 @@ Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * 
 });
 
 Load<WalkMeshes> foodworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
-    auto *ret = new WalkMeshes(data_path("artworld.w"));
+    auto *ret = new WalkMeshes(data_path("foodworld.w"));
     walkmesh = &ret->lookup("WalkMesh");
     return ret;
 });
@@ -197,6 +197,8 @@ Load<WalkMeshes> foodworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
 PlayMode::PlayMode(SDL_Window *window)
         : text_display(5, 60, glm::vec2(-0.40f, -0.45f), glm::vec2(0.8f, 0.2f)),
           terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)) {
+
+    walkmesh = &artworld_walkmeshes->lookup("WalkMesh");
     
     this->window = window;
     glGenVertexArrays(1, &image_vao);
@@ -993,6 +995,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 // TODO exclude player collider?
 void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     if (!player.has_paint_ability) {
+        text_display.add_text(std::vector<std::string>{"You want to use your power, but nothing happens"});
         return;
     }
     
@@ -1038,6 +1041,21 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
             scene->wf_obj_pass_map.erase(c->name);
         }
         d->wireframe_info.draw_frame = false;
+
+
+        // If this is the compass, trigger scenc change logic
+        if(c->name.find("frontroom")!=std::string::npos){
+            is_changing_scene = true;
+            start_timepoint = std::chrono::system_clock::now();
+            //change to foodworld?
+            scene = scene_map[FOODSCENE];
+            text_display.remove_all_text();
+            text_display.deactivate();
+            walkmesh = &foodworld_walkmeshes->lookup("WalkMesh");
+            initialize_player();
+        }
+
+
     } else {
         // remove bounding box
         if (scene->wf_obj_block_map.count(c->name)) {
@@ -1060,6 +1078,8 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     if (c->name.find("Paintbrush") != std::string::npos) {
         player.has_paint_ability = true;
     }
+
+    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});  
 }
 
 void PlayMode::update_wireframe() {
@@ -1612,7 +1632,7 @@ void PlayMode::initialize_player(){
                                     // Do not update if player intersects the object
                                     if (!player_collider->intersect(c)){
                                         update_wireframe(c);
-                                        text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});  
+                                        //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});  
                                     }else{
                                         text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});  
                                     }
@@ -1677,14 +1697,6 @@ void PlayMode::initialize_player(){
                     return true;
                 } 
 
-                //debug scene change
-                else if (evt.key.keysym.sym == SDLK_DELETE){
-                    is_changing_scene = true;
-                    start_timepoint = std::chrono::system_clock::now();
-                    //change to foodworld?
-                    scene = scene_map[FOODSCENE];
-                    initialize_player();
-                }
             } else if (evt.type == SDL_KEYUP) {
                 if (evt.key.keysym.sym == SDLK_a) {
                     left.pressed = false;
@@ -1812,8 +1824,6 @@ std::pair<std::string,glm::vec3>  PlayMode::find_closest_sign(){
             //std::cout << "selected: " << selected << std::endl;
             assert(selected.back() == 'm');
             std::string selectedCamera = textBearerCams[selected];
-            auto destCamera = scene->cams[selectedCamera];
-            assert(destCamera != nullptr);
             auto t = nameToTransform[selected];
             auto selectedToWorld = t->make_local_to_world();
             auto world_coord = selectedToWorld * glm::vec4(t->position,1.0);

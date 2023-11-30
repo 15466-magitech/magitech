@@ -83,7 +83,7 @@ struct PlayMode : Mode {
         std::string name = "Player";
 
         //player ability
-        bool has_paint_ability = false;
+        bool has_paint_ability = true; // debug , change it back!
         bool has_unlock_ability = false;
         bool has_bounce_ability = true;
 

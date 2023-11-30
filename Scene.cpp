@@ -658,22 +658,22 @@ void Scene::initialize_wireframe_objects(const std::string &prefix) {
             // Only one time?
             auto d = drawble_name_map[c->name];
             
-            if (c->name.find("pass") != std::string::npos) {
+            if (c->name.find("_pass") != std::string::npos) {
                 //wf_obj_pass.push_back(c);
                 wf_obj_pass_map[c->name] = c;
-            } else if (c->name.find("block") != std::string::npos) {
+            } else if (c->name.find("_block") != std::string::npos) {
                 //wf_obj_block.push_back(c);
                 wf_obj_block_map[c->name] = c;
             } else {
                 throw std::runtime_error("Unknown type of wireframe object");
             }
             
-            if (c->name.find("onetime") != std::string::npos) {
+            if (c->name.find("_onetime") != std::string::npos) {
                 d->wireframe_info.one_time_change = true;
             } else {
                 d->wireframe_info.one_time_change = false;
             }
-            if (c->name.find("on") != std::string::npos) {
+            if (c->name.find("_on") != std::string::npos) {
                 d->wireframe_info.draw_frame = false;
             } else {
                 d->wireframe_info.draw_frame = true;
