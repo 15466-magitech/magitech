@@ -700,7 +700,7 @@ void PlayMode::draw_keyboard_sign(glm::vec3 clip_space){
 
     glBindVertexArray(R_vao);
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, attribs.size());
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei) attribs.size());
 
     glBindVertexArray(0);
 
