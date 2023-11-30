@@ -182,23 +182,23 @@ Load<Scene> foodworld_scene(LoadTagDefault,[]() -> Scene const * {
 });
 
 WalkMesh const *walkmesh = nullptr;
+WalkMesh const *artworld_walkmesh = nullptr;
 Load<WalkMeshes> artworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
     auto *ret = new WalkMeshes(data_path("artworld.w"));
-    walkmesh = &ret->lookup("WalkMesh");
+    artworld_walkmesh = &ret->lookup("WalkMesh");
     return ret;
 });
 
+WalkMesh const *foodworld_walkmesh = nullptr;
 Load<WalkMeshes> foodworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
     auto *ret = new WalkMeshes(data_path("foodworld.w"));
-    walkmesh = &ret->lookup("WalkMesh");
+    foodworld_walkmesh = &ret->lookup("WalkMesh");
     return ret;
 });
 
 PlayMode::PlayMode(SDL_Window *window)
         : text_display(5, 60, glm::vec2(-0.40f, -0.45f), glm::vec2(0.8f, 0.2f)),
           terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)) {
-
-    walkmesh = &artworld_walkmeshes->lookup("WalkMesh");
     
     this->window = window;
     glGenVertexArrays(1, &image_vao);
@@ -253,10 +253,9 @@ PlayMode::PlayMode(SDL_Window *window)
 
 
     scene = scene_map[ARTSCENE];
-
-    initialize_player();
+    walkmesh = artworld_walkmesh;
     
-
+    initialize_player();
     
     // this activates the player component stuff
     terminal.activate();
@@ -497,7 +496,7 @@ void PlayMode::update(float elapsed) {
                     set_bouncing_spline(player.bounce_destination);
                     player.bounce_destination = glm::vec3{0.0f};
 
-                }else{ 
+                }else{
                     if(player.bounce_stage != 2){
                         std::runtime_error("Wrong Bounce Stage");
                     }
@@ -947,7 +946,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
                 
                 glm::vec4 clip_space = world_to_clip * glm::vec4{pos,1.0};
                 
-                glm::vec3 clip_space_3d = glm::vec3{clip_space.x / clip_space.w,clip_space.y/clip_space.w,clip_space.z/clip_space.w}; 
+                glm::vec3 clip_space_3d = glm::vec3{clip_space.x / clip_space.w,clip_space.y/clip_space.w,clip_space.z/clip_space.w};
 
                 draw_keyboard_sign(clip_space_3d);
             }
@@ -1079,7 +1078,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
         player.has_paint_ability = true;
     }
 
-    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});  
+    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
 }
 
 void PlayMode::update_wireframe() {
@@ -1632,7 +1631,7 @@ void PlayMode::initialize_player(){
                                     // Do not update if player intersects the object
                                     if (!player_collider->intersect(c)){
                                         update_wireframe(c);
-                                        //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});  
+                                        //text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
                                     }else{
                                         text_display.add_text(std::vector<std::string>{"You are too close to the object. Casting magic at such distance will hurt you!"});  
                                     }
