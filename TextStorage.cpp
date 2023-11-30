@@ -62,12 +62,12 @@ void TextStorage::load(std::string filename){
             // Now we have all line position store in line_positions
             for(size_t j = 0; j < line_positions.size();j++){
                 pos = line_positions[j];
-                size_t pos_next = std::string::npos;
+                pos_next = std::string::npos;
                 if (j<line_positions.size()-1) 
                     pos_next = line_positions[j+1];
 
-                size_t index_begin = pos + line_delimiter.size();
-                size_t length = pos_next - index_begin;
+                index_begin = pos + line_delimiter.size();
+                length = pos_next - index_begin;
                 std::string line = option.substr(index_begin,length);
                 line_vector.push_back(line);
             }
