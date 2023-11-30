@@ -6,6 +6,7 @@
 #include "Mesh.hpp"
 #include "Terminal.hpp"
 #include "spline.h"
+#include "load_save_png.hpp"
 
 #include <glm/glm.hpp>
 
@@ -59,6 +60,7 @@ struct PlayMode : Mode {
     GLuint depth_fb;
     GLuint depth_tex;
     GLuint dot_tex;
+    GLuint R_tex;
 
     GLuint shadow_depth_fb;
     GLuint shadow_depth_tex;
@@ -117,9 +119,14 @@ struct PlayMode : Mode {
     void gen_framebuffers();
     void resize_depth_tex();
     void draw_black_screen();
+    void draw_keyboard_sign(glm::vec3);
+    void gen_R_texture();
 
     void update_wireframe();
     void update_wireframe(const std::shared_ptr<Scene::Collider>& collider);
+
+
+    std::pair<std::string,glm::vec3> find_closest_sign();
     
     
     

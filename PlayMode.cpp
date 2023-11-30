@@ -202,6 +202,8 @@ PlayMode::PlayMode(SDL_Window *window)
     glGenVertexArrays(1, &image_vao);
     gen_framebuffers();
     image_vao = gen_image(glm::vec2(-1.0f, -1.0f), glm::vec2(2.0f, 2.0f), 0.0f, 0.0f, 1.0f, 1.0f);
+
+    gen_R_texture();
     
     // TODO: remove this test code
     {
@@ -572,6 +574,25 @@ void PlayMode::gen_dot_texture() {
     GL_ERRORS();
 }
 
+void PlayMode::gen_R_texture() {
+    glGenTextures(1, &R_tex);
+    
+    glm::uvec2 size;
+    std::vector<glm::u8vec4> data;
+    load_png(data_path("R.png"), &size, &data, LowerLeftOrigin);
+    
+    glBindTexture(GL_TEXTURE_2D, R_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    
+    GL_ERRORS();
+}
+
 // Code derived from https://15466.courses.cs.cmu.edu/lesson/framebuffers
 void PlayMode::gen_framebuffers() {
     gen_dot_texture();
@@ -594,6 +615,111 @@ void PlayMode::gen_framebuffers() {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_depth_tex, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
+// Draw an R sign as a hint to the player
+void PlayMode::draw_keyboard_sign(glm::vec3 clip_space){
+
+    static GLuint Rbuffer = 0;
+    if (Rbuffer == 0) {
+        glGenBuffers(1, &Rbuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, Rbuffer);
+        //actually nothing to do right now just wanted to bind it for illustrative purposes
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    struct Vert {
+        Vert(glm::vec3 const &position_, glm::vec2 const &tex_coord_) : position(position_), tex_coord(tex_coord_) { }
+        glm::vec3 position;
+        glm::vec2 tex_coord;
+    };
+    static_assert(sizeof(Vert) == 20, "Vert is packed");
+
+    auto &program = texture_program;
+
+    static GLuint R_vao = 0;
+    if (R_vao == 0) {
+        //based on PPU466.cpp
+
+        glGenVertexArrays(1, &R_vao);
+        glBindVertexArray(R_vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, Rbuffer);
+
+        glVertexAttribPointer(
+            program->Position_vec4, //attribute
+            3, //size
+            GL_FLOAT, //type
+            GL_FALSE, //normalized
+            sizeof(Vert), //stride
+            (GLbyte *)0 + offsetof(Vert, position) //offset
+        );
+        glEnableVertexAttribArray(program->Position_vec4);
+
+        glVertexAttribPointer(
+            program->TexCoord_vec2, //attribute
+            2, //size
+            GL_FLOAT, //type
+            GL_FALSE, //normalized
+            sizeof(Vert), //stride
+            (GLbyte *)0 + offsetof(Vert, tex_coord) //offset
+        );
+        glEnableVertexAttribArray(program->TexCoord_vec2);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindVertexArray(0);
+    }
+
+
+    //actually draw some textured quads!
+    std::vector< Vert > attribs;
+
+    clip_space.y += 0.1;
+
+    attribs.emplace_back(glm::vec3(clip_space.x - 0.03f, clip_space.y - 0.03f, 0.0f), glm::vec2(0.0f, 0.0f));
+    attribs.emplace_back(glm::vec3(clip_space.x - 0.03f, clip_space.y + 0.03f, 0.0f), glm::vec2(0.0f, 1.0f));
+    attribs.emplace_back(glm::vec3(clip_space.x + 0.03f, clip_space.y - 0.03f, 0.0f), glm::vec2(1.0f, 0.0f));
+    attribs.emplace_back(glm::vec3(clip_space.x + 0.03f, clip_space.y + 0.03f, 0.0f), glm::vec2(1.0f, 1.0f));
+
+    glBindBuffer(GL_ARRAY_BUFFER, Rbuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vert) * attribs.size(), attribs.data(), GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    //as per Scene::draw -
+    glUseProgram(program->program);
+    glUniformMatrix4fv(program->OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+
+    glBindTexture(GL_TEXTURE_2D, R_tex);
+
+
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glBindVertexArray(R_vao);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, attribs.size());
+
+    glBindVertexArray(0);
+
+
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glUseProgram(0);
+
+    GL_ERRORS();
+
+    glEnable(GL_DEPTH_TEST);
+
+}
+
+
+
+
 
 void PlayMode::draw_black_screen(){
     
@@ -719,7 +845,6 @@ void PlayMode::draw_black_screen(){
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
-
     if (is_changing_scene){
         draw_black_screen();
         return;
@@ -804,7 +929,32 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     //         lines.draw(r.first,r.second);
     //     }
     // }
+
+    {
+        // Draw a sign
+
+        // Currently it can not handle the situation when the sign is occluded by some other objects between it and the camera
+        if(animated == NO){
+            std::string name;
+            glm::vec3 pos;
+            std::tie(name,pos) = find_closest_sign();
+
+            glm::mat4 world_to_clip = player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local());
+
+            if (!name.empty()){
+                
+                glm::vec4 clip_space = world_to_clip * glm::vec4{pos,1.0};
+                
+                glm::vec3 clip_space_3d = glm::vec3{clip_space.x / clip_space.w,clip_space.y/clip_space.w,clip_space.z/clip_space.w}; 
+
+                draw_keyboard_sign(clip_space_3d);
+            }
+        }
+
+    }
+
     
+
     
     // Draw a crosshair at the center of the screen
     {
@@ -830,6 +980,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
         lines.draw(ph_0, ph_1);
         glEnable(GL_DEPTH_TEST);
     }
+
+    
     
     //draw_image(image_vao, shadow_depth_tex, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.4f, 0.4f, 0.2f, 0.2f);
     
@@ -1631,3 +1783,46 @@ void PlayMode::set_bouncing_spline(glm::vec3 destination){
     player.player_bounce_spline.set(0.5f,middle_point);
 
 }
+
+
+
+std::pair<std::string,glm::vec3>  PlayMode::find_closest_sign(){
+        //float distance = std::numeric_limits<float>::max();
+        float distance = player.SIGHT_DISTANCE; // can see this far
+        auto here = player.transform->position;
+        //std::cout << "here " << here.x << " " << here.y << " " << here.z << std::endl;
+        std::string selected;
+        
+        // find the closest text bearer
+        for (const auto &[name, mesh]: textBearers) {
+            if (!endsWith(name, "_m")) {
+                continue;
+            }
+            auto transform = nameToTransform[name];
+            auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+            //std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
+            float newdistance = glm::distance(here, there);
+            //std::cout << "distance: " << newdistance << " name: " << name << std::endl;
+            if (newdistance < distance) {
+                distance = newdistance;
+                selected = name;
+            }
+        }
+        if (!selected.empty()) {
+            //std::cout << "selected: " << selected << std::endl;
+            assert(selected.back() == 'm');
+            std::string selectedCamera = textBearerCams[selected];
+            auto destCamera = scene->cams[selectedCamera];
+            assert(destCamera != nullptr);
+            auto t = nameToTransform[selected];
+            auto selectedToWorld = t->make_local_to_world();
+            auto world_coord = selectedToWorld * glm::vec4(t->position,1.0);
+            //auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
+            return std::make_pair(selected,world_coord);
+        } else {
+            //std::cout << "No readable sign in range" << std::endl;
+            return std::make_pair(selected,glm::vec3{0.0f});
+        }
+
+
+    }
