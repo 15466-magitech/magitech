@@ -1587,7 +1587,7 @@ void PlayMode::initialize_player(){
                 }
                 
                 //update_wireframe();
-                std::cout << "command was open mirage!\n";
+                std::cout << "command was mirage!\n";
                 break;
             case Command::Cook:
                 cook();
@@ -1665,7 +1665,7 @@ void PlayMode::initialize_player(){
                                         }
                                         
                                     }else{
-                                        text_display.add_text(std::vector<std::string>{"You are too far away from theo object"});
+                                        text_display.add_text(std::vector<std::string>{"You are too far away from the object"});
                                     }
 
                                     text_display.activate();
