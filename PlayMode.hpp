@@ -102,6 +102,7 @@ struct PlayMode : Mode {
         float interpolation_time = 0.0f;
         uint8_t bounce_stage = 0; // 0 means not in bouce stage. 1 means from location to bread. 2 means from bread to destination
         glm::vec3 bounce_destination{0.0f};
+        glm::vec3 bounce_midpoint{0.0f};
 
     } player;
 
@@ -144,7 +145,7 @@ struct PlayMode : Mode {
 
     // Bouncing logic
     void get_off_walkmesh();
-    void set_bouncing_spline(glm::vec3);
+    void set_bouncing_spline(glm::vec3 a,glm::vec3 b = glm::vec3{0.0f});
 
 
     //Scene change

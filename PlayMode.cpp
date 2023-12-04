@@ -495,8 +495,9 @@ void PlayMode::update(float elapsed) {
                 if (player.bounce_stage == 1){
                     player.interpolation_time = 0.0;
                     player.bounce_stage = 2;
-                    set_bouncing_spline(player.bounce_destination);
+                    set_bouncing_spline(player.bounce_destination,player.bounce_midpoint);
                     player.bounce_destination = glm::vec3{0.0f};
+                    player.bounce_midpoint = glm::vec3{0.0f};
 
                 }else{
                     if(player.bounce_stage != 2){
@@ -1718,7 +1719,9 @@ void PlayMode::initialize_player(){
                                 get_off_walkmesh();
                                 set_bouncing_spline(location);
                                 player.bounce_stage = 1;
-                                player.bounce_destination = scene->bread_bouncelocation_map[c];
+                                player.bounce_destination = scene->bread_bouncelocation_map[c].second;
+                                player.bounce_midpoint = scene->bread_bouncelocation_map[c].first;
+                                
                             }
                         }
                     }
@@ -1802,7 +1805,7 @@ void PlayMode::get_off_walkmesh(){
 }
 
 
-void PlayMode::set_bouncing_spline(glm::vec3 destination){
+void PlayMode::set_bouncing_spline(glm::vec3 destination, glm::vec3 midpoint){
 
     std::cerr << "This is a debug test for spline interpolation of player location" << std::endl;
 
@@ -1814,11 +1817,13 @@ void PlayMode::set_bouncing_spline(glm::vec3 destination){
 
     glm::vec3 bounce_location = destination;
 
-    // Add a control point to the spline?
-    glm::vec3 middle_point;
-    middle_point.z  = destination.z + 2;
-    middle_point.x  = (destination.x - player_world_location.x) / 3 + player_world_location.x;
-    middle_point.y  = (destination.y - player_world_location.y) / 3 + player_world_location.y;
+    if (midpoint.x == midpoint.y && midpoint.y == midpoint.z && midpoint.x == 0){
+        // Add a control point to the spline?
+        midpoint.z  = destination.z + 2;
+        midpoint.x  = (destination.x - player_world_location.x) / 3 + player_world_location.x;
+        midpoint.y  = (destination.y - player_world_location.y) / 3 + player_world_location.y;
+    }
+
 
 
 
@@ -1829,7 +1834,7 @@ void PlayMode::set_bouncing_spline(glm::vec3 destination){
     player.player_bounce_spline.set(1.0f, bounce_location);
     
     // Add an extra control point
-    player.player_bounce_spline.set(0.5f,middle_point);
+    player.player_bounce_spline.set(0.5f,midpoint);
 
 }
 
@@ -1891,5 +1896,12 @@ void PlayMode::cook() {
         player.has_bounce_ability = true;
     } else {
         terminal.text_display.add_text({"You used the wrong ingredients... it tastes awful :("});
+        // Reset those ingredients to wireframe
+        for (auto &[name, required] : ingredients) {
+            bool is_current_wireframe = scene->drawble_name_map[name]->wireframe_info.draw_frame;
+            if (!is_current_wireframe) {
+                update_wireframe(scene->collider_name_map[name]);
+            }
+        }
     }
 }

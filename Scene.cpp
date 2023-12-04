@@ -784,25 +784,74 @@ void Scene::initialize_bread(const std::string &prefix, Load<MeshBuffer> meshes)
 				bread_colliders.push_back(collider);
 				breadcollider_name_map[name] = collider;
 
+				glm::vec3 location_destination;
+				glm::vec3 location_midpoint;
 
-				std::string location_name = name;
-				location_name.pop_back();
-				location_name.push_back('2');
+				{
+					std::string location_name = name;
+					location_name.pop_back();
+					location_name.push_back('2');
 
 
-				auto location_mesh = meshes->lookup(location_name);
+					auto location_mesh = meshes->lookup(location_name);
 
-				auto location_drawable = drawble_name_map[location_name];
-				// set the location to be invisible
-				location_drawable->is_invisible = true;
+					auto location_drawable = drawble_name_map[location_name];
+					// set the location to be invisible
+					location_drawable->is_invisible = true;
 
-				auto tmp_collider = Collider("tmp",location_mesh.min,location_mesh.max,location_mesh.min,location_mesh.max);
-				tmp_collider.update_BBox(location_drawable->transform);
+					auto tmp_collider = Collider("tmp",location_mesh.min,location_mesh.max,location_mesh.min,location_mesh.max);
+					tmp_collider.update_BBox(location_drawable->transform);
 
-				glm::vec3 location = (tmp_collider.min + tmp_collider.max) / 2.0f;
+					location_destination = (tmp_collider.min + tmp_collider.max) / 2.0f;
 
-				bread_bouncelocation_map[collider] = location;
+				}
+
+				{
+					std::string location_name = name;
+					location_name.pop_back();
+					location_name.push_back('3');
+
+
+					auto location_mesh = meshes->lookup(location_name);
+
+					auto location_drawable = drawble_name_map[location_name];
+					// set the location to be invisible
+					location_drawable->is_invisible = true;
+
+					auto tmp_collider = Collider("tmp",location_mesh.min,location_mesh.max,location_mesh.min,location_mesh.max);
+					tmp_collider.update_BBox(location_drawable->transform);
+
+					location_midpoint = (tmp_collider.min + tmp_collider.max) / 2.0f;
+				}
+
+				bread_bouncelocation_map[collider] = std::make_pair(location_midpoint,location_destination);
+
 			}
         }
     }
 }
+
+
+// prefix should be "col_wire_off_pass_ingredient_xxxx"
+// void Scene::initialize_ingredient(const std::string &prefix, Load<MeshBuffer> meshes){
+
+// 	for (const auto &it: meshes->meshes) {
+//         const std::string &name = it.first;
+//         auto mesh = it.second;
+//         if (name.find(prefix) != std::string::npos) {
+
+// 			glm::vec3 min = mesh.min;
+// 			glm::vec3 max = mesh.max;
+// 			auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
+// 			auto d = drawble_name_map[name];
+// 			if (d == nullptr) {
+// 				std::cout<< "Potential problem : no drawable found!" << std::endl;
+// 				continue;
+// 			}
+// 			collider->update_BBox(d->transform);
+			
+// 			ingredient_objects.push_back(collider);
+// 			ingredient_name_map[name] = collider;
+//         }
+//     }
+// }

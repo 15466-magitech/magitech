@@ -207,7 +207,7 @@ struct Scene {
 	//bread data structure
 	std::list<std::shared_ptr<Collider>> bread_colliders;
 	std::map<std::string, std::shared_ptr<Collider>> breadcollider_name_map;
-	std::map<std::shared_ptr<Collider>, glm::vec3> bread_bouncelocation_map;
+	std::map<std::shared_ptr<Collider>, std::pair<glm::vec3,glm::vec3>> bread_bouncelocation_map;
 
 
 	// Wireframe logics
@@ -220,6 +220,9 @@ struct Scene {
     std::unordered_map<std::string, std::shared_ptr<Collider>> wf_obj_block_map;
 
 
+	// Wireframe ingredient logic
+	// std::list<std::shared_ptr<Collider>> ingredient_objects;
+	// std::map<std::string,std::shared_ptr<Collider>> ingredient_name_map;
 
 	
 
@@ -266,4 +269,5 @@ struct Scene {
     void initialize_text_collider(const std::string &prefix_pattern, Load<MeshBuffer> meshes);
 
 	void initialize_bread(const std::string &prefix_pattern, Load<MeshBuffer> meshes);
+	//void initialize_ingredient(const std::string &prefix_pattern, Load<MeshBuffer> meshes);
 };
