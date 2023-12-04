@@ -376,10 +376,12 @@ void PlayMode::update(float elapsed) {
             if (!left.pressed && right.pressed) move.x = 1.0f;
             if (down.pressed && !up.pressed) move.y = -1.0f;
             if (!down.pressed && up.pressed) move.y = 1.0f;
-            
+
             //make it so that moving diagonally doesn't go faster:
             if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
-            
+
+            if (run.pressed) move *= 2;
+
             //get move in world coordinate system:
             glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
             
@@ -523,6 +525,7 @@ void PlayMode::update(float elapsed) {
     right.downs = 0;
     up.downs = 0;
     down.downs = 0;
+    run.downs = 0;
 }
 
 int lastWidth = -1;
@@ -1621,6 +1624,10 @@ void PlayMode::initialize_player(){
                     down.downs += 1;
                     down.pressed = true;
                     return true;
+                } else if (evt.key.keysym.sym == SDLK_LSHIFT) {
+                    run.downs += 1;
+                    run.pressed = true;
+                    return true;
                 } else if (evt.key.keysym.sym == SDLK_e) {
                     terminal.activate();
                     left.pressed = false;
@@ -1732,6 +1739,9 @@ void PlayMode::initialize_player(){
                     return true;
                 } else if (evt.key.keysym.sym == SDLK_s) {
                     down.pressed = false;
+                    return true;
+                } else if (evt.key.keysym.sym == SDLK_LSHIFT) {
+                    run.pressed = false;
                     return true;
                 } else if (evt.key.keysym.sym == SDLK_r) {
                     read.pressed = false;

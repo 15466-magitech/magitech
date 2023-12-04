@@ -50,7 +50,7 @@ struct PlayMode : Mode {
     struct Button {
         uint8_t downs = 0;
         uint8_t pressed = 0;
-    } left, right, down, up, esc, read;
+    } left, right, down, up, esc, read, run;
     // camera animation
     animation_t animated = NO;
     float animationTime = 0.0f;
