@@ -15,6 +15,8 @@ How To Play:
 (TODO: describe the controls and (if needed) goals/strategy.)
 
 Sources: (TODO: list a source URL for any assets you did not create yourself. Make sure you have a license for the asset.)
+"Sobre las olas", composed by Juventino Rosas
+"Fire down below", traditional
 
 This game was built with [NEST](NEST.md).
 

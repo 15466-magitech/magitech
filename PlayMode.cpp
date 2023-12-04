@@ -47,6 +47,14 @@ bool endsWith(const std::string &str, const std::string &suffix) {
     return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
 }
 
+Load< Sound::Sample > olas_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("olas.opus"));
+});
+
+Load< Sound::Sample > fire_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("fire.opus"));
+});
+
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
@@ -260,6 +268,7 @@ PlayMode::PlayMode(SDL_Window *window)
 
     scene = scene_map[ARTSCENE];
     walkmesh = artworld_walkmesh;
+    bgm = Sound::loop(*olas_sample);
     
     initialize_player();
     
@@ -1068,6 +1077,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
             start_timepoint = std::chrono::system_clock::now();
             //change to foodworld?
             scene = scene_map[FOODSCENE];
+            bgm->stop(1.0);
             text_display.remove_all_text();
  
             std::vector<std::string> tmpstr{
@@ -1079,6 +1089,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
                 text_display.activate();
             walkmesh = &foodworld_walkmeshes->lookup("WalkMesh");
             initialize_player();
+            bgm = Sound::loop(*fire_sample);
         }
 
 
