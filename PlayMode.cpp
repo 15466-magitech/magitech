@@ -1612,8 +1612,6 @@ void PlayMode::initialize_player(){
                     if(text_display.is_activated()){
                         text_display.deactivate();
                         text_display.remove_all_text();
-                    }else{
-                        SDL_SetRelativeMouseMode(SDL_FALSE);
                     }
                     esc.downs += 1;
                     esc.pressed = true;

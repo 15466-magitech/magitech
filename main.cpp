@@ -151,6 +151,11 @@ int main(int argc, char **argv) {
                     on_resize();
                 }
                 if (Mode::current == pausemode){
+
+                    SDL_SetRelativeMouseMode(SDL_FALSE);
+                    
+
+
                     switch (Mode::current->game_state)
                     {
                     case START:

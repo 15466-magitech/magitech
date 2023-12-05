@@ -43,6 +43,13 @@ PauseMode::PauseMode(SDL_Window *window)
 PauseMode::~PauseMode() = default;
 
 bool PauseMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
+
+    if (evt.key.keysym.sym == SDLK_BACKQUOTE) {
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+        return true;
+    }
+
+
 	return false;
 }
 
@@ -66,7 +73,10 @@ void PauseMode::draw(glm::uvec2 const &drawable_size) {
                 "",
                 "Welcome to TechWiz",
                 "",
-                "S : press S to start the game"
+                "S : press S to start the game",
+                "Q in menu : press Q to exit the game",
+                "Q in game : press Q to pause the game"
+                //"` : press backquote to detach mouse"
             }
         );
         text_display.activate();
@@ -83,8 +93,9 @@ void PauseMode::draw(glm::uvec2 const &drawable_size) {
                 "",
                 "Game is paused",
                 "",
-                "Q : press Q to quit the game",
-                "ESC : press ESC to continue"
+                "Q : press Q to exit the game",
+                "ESC : press ESC to continue the game"
+                //"` : press backquote to detach mouse"
             }
         );
         text_display.activate();
@@ -99,7 +110,7 @@ void PauseMode::draw(glm::uvec2 const &drawable_size) {
                 "",
                 "The journey of TechWiz has come to an end",
                 "",
-                "Q : press Q to exit",
+                "Q : press Q to exit the game",
                 "",
                 "",
                 "Created by Matei Budiu, Nellie Tonev, Russel Emerine, Michael Stroucken and Yuan Meng",
