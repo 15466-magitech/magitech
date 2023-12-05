@@ -71,7 +71,6 @@ Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 });
 
 
-// Currently there is no foodworld scene
 Load<MeshBuffer> foodworld_meshes(LoadTagDefault,[]() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("foodworld.pnct"));
     foodworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
@@ -166,8 +165,14 @@ Load<Scene> foodworld_scene(LoadTagDefault,[]() -> Scene const * {
                     drawable->pipeline = rocket_color_texture_program_pipeline;
                     drawable->pipeline.vao = foodworld_meshes_for_rocket_color_texture_program;
                     drawable->specular_info.shininess = 10.0;
+                } else if (foodworld_meshes->lookup_collection(mesh_name) == "bg_noshadow") {
+                    drawable->pipeline = shadow_program_pipeline;
+                    drawable->pipeline.vao = foodworld_meshes_for_lit_color_texture_program;
+                    drawable->specular_info.shininess = 5.0;
+                    drawable->specular_info.specular_brightness = glm::vec3(0.5f, 0.5f, 0.5f);
+                    drawable->ignore_shadow = true;
                 } else {
-                    drawable->pipeline = lit_color_texture_program_pipeline;
+                    drawable->pipeline = shadow_program_pipeline;
                     drawable->pipeline.vao = foodworld_meshes_for_lit_color_texture_program;
                     drawable->specular_info.shininess = 10.0;
                 }
@@ -551,7 +556,7 @@ void PlayMode::resize_depth_tex() {
     glBindTexture(GL_TEXTURE_2D, 0);
     
     glBindTexture(GL_TEXTURE_2D, shadow_depth_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x * 4.0, window_size.y * 4.0, 0, GL_DEPTH_COMPONENT,
                  GL_UNSIGNED_INT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -913,7 +918,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, shadow_depth_tex);
     glActiveTexture(GL_TEXTURE0);
-    
+
+    glViewport(0, 0, drawable_size.x * 4.0, drawable_size.y * 4.0);
     glBindFramebuffer(GL_FRAMEBUFFER, shadow_depth_fb);
     glClear(GL_DEPTH_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -921,8 +927,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     scene->draw_shadow(*player.camera, true);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    
-    
+
+    glViewport(0, 0, drawable_size.x, drawable_size.y);
     // Draw the world
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1001,7 +1007,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 // TODO exclude player collider?
 void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     if (!player.has_paint_ability) {
-        text_display.add_text(std::vector<std::string>{"You want to use your power, but nothing happens"});
+        text_display.add_text(std::vector<std::string>{"A magic aura lingers around this object,"});
+        text_display.add_text(std::vector<std::string>{"but you can't seem to figure out the right spell."});
+        text_display.add_text(std::vector<std::string>{"Maybe try looking around for some clues?"});
         return;
     }
     
@@ -1032,7 +1040,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
     auto d = scene->drawble_name_map[c->name];
 
 
-    text_display.add_text(std::vector<std::string>{"You cast wireframe magic to the object"});
+    text_display.add_text(std::vector<std::string>{"You use the magic paintbrush's power on the object"});
     
     if (is_current_wireframe) {
         scene->current_wireframe_objects_map.erase(c->name);
@@ -1061,8 +1069,8 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
             text_display.remove_all_text();
  
             std::vector<std::string> tmpstr{
-            "The compass get solidified, the ship is taking off",
-            "You are travelling to another world"
+            "You paint in the compass, allowing you to",
+            "take off and travel to another world"
             };
             text_display.add_text(tmpstr);
             if(!text_display.is_activated())
@@ -1650,10 +1658,13 @@ void PlayMode::initialize_player(){
                         auto type = check_collider_type(c);
                         switch (type) {
                             case WIREFRAME: {
-                                if(!player.has_paint_ability){
-                                    text_display.add_text(std::vector<std::string>{"You want to use your power, but nothing happens"});
-                                    text_display.activate();
-                                }else{
+//                                if(!player.has_paint_ability){
+//                                    text_display.add_text(std::vector<std::string>{"A magic aura lingers around this object,"});
+//                                    text_display.add_text(std::vector<std::string>{"but you can't seem to figure out the right spell."});
+//                                    text_display.add_text(std::vector<std::string>{"Maybe try looking around for some clues?"});
+//                                    text_display.activate();
+//                                }else
+                                {
                                     auto player_collider = scene->collider_name_map[player.name];
                                     if (distance < 10.0f) {
                                         // Do not update if player intersects the object
@@ -1665,7 +1676,7 @@ void PlayMode::initialize_player(){
                                         }
                                         
                                     }else{
-                                        text_display.add_text(std::vector<std::string>{"You are too far away from theo object"});
+                                        text_display.add_text(std::vector<std::string>{"You are too far away from the object"});
                                     }
 
                                     text_display.activate();

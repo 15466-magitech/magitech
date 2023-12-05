@@ -66,6 +66,8 @@ struct Scene {
 			bool one_time_change = false;
 		} wireframe_info;
 
+        bool ignore_shadow = false;
+
 		struct{
 			scene_type type;
 		} scene_info;
