@@ -980,7 +980,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
     
 
-    
+    if(animated == NO)
     // Draw a crosshair at the center of the screen
     {
         glDisable(GL_DEPTH_TEST);
