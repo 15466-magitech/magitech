@@ -86,7 +86,7 @@ void Scene::draw(Camera const &camera, bool draw_frame ) const {
 	assert(camera.transform);
 	glm::mat4 world_to_clip = camera.make_projection() * glm::mat4(camera.transform->make_world_to_local());
     glm::mat4 rot = glm::toMat4(glm::angleAxis(glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(-22.5f), glm::vec3(0.0f, 1.0f, 0.0f)));
-    glm::mat4x3 world_to_light = glm::mat4x3(0.03f, 0.0f, 0.0f,  0.0f, 0.03f, 0.0f,  0.0f, 0.0f, -0.03f,  0.0f, 0.0f, 0.0f) * rot;
+    glm::mat4x3 world_to_light = (0.25f * glm::mat4x3(0.03f, 0.0f, 0.0f,  0.0f, 0.03f, 0.0f,  0.0f, 0.0f, -0.03f,  0.0f, 0.0f, 0.0f)) * rot;
 	draw(world_to_clip, world_to_light, draw_frame);
 }
 
@@ -94,7 +94,7 @@ void Scene::draw_shadow(Camera const &camera, bool draw_frame ) const {
     assert(camera.transform);
     glm::mat4 world_to_clip = camera.make_projection() * glm::mat4(camera.transform->make_world_to_local());
     glm::mat4 rot = glm::toMat4(glm::angleAxis(glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * glm::angleAxis(glm::radians(-22.5f), glm::vec3(0.0f, 1.0f, 0.0f)));
-    glm::mat4x3 world_to_light = glm::mat4x3(0.03f, 0.0f, 0.0f,  0.0f, 0.03f, 0.0f,  0.0f, 0.0f, -0.03f,  0.0f, 0.0f, 0.0f) * rot;
+    glm::mat4x3 world_to_light = (0.25f * glm::mat4x3(0.03f, 0.0f, 0.0f,  0.0f, 0.03f, 0.0f,  0.0f, 0.0f, -0.03f,  0.0f, 0.0f, 0.0f)) * rot;
     draw_shadow(world_to_clip, world_to_light, draw_frame);
 }
 
@@ -102,7 +102,7 @@ void Scene::draw_shadow(glm::mat4 const &world_to_clip, glm::mat4x3 const &world
 {
     for (auto const &drawable: drawables)
     {
-        if (drawable->wireframe_info.draw_frame != draw_frame) {
+        if (drawable->wireframe_info.draw_frame != draw_frame || drawable->ignore_shadow) {
             continue;
         }
 
