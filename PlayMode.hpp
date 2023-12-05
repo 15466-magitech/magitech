@@ -42,7 +42,7 @@ struct PlayMode : Mode {
     void draw(glm::uvec2 const &drawable_size) override;
     
     //----- game state -----
-    
+    TextDisplay sign_display;
     TextDisplay text_display;
     Terminal terminal;
     

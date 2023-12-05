@@ -26,7 +26,7 @@ struct TextDisplay : Entity {
      * with the specified display size (as fraction of [-1, 1] x [-1, 1]).
      * Starts out unactivated
      */
-    TextDisplay(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size);
+    TextDisplay(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size, std::string fontpath = "UbuntuMono.png");
     
     /*
      * Activates the text display, which means adding the Draw component

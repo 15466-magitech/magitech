@@ -197,11 +197,12 @@ Load<WalkMeshes> foodworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
 });
 
 PlayMode::PlayMode(SDL_Window *window)
-        : text_display(5, 60, glm::vec2(-0.40f, -0.45f), glm::vec2(0.8f, 0.2f)),
+        : sign_display(5, 40, glm::vec2(-0.3f,-0.25f), glm::vec2(0.6f,0.4f),"UbuntuMono_brown.png"),
+          text_display(5, 60, glm::vec2(-0.40f, -0.45f), glm::vec2(0.8f, 0.2f)),
           terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)) {
     
     this->window = window;
-    glGenVertexArrays(1, &image_vao);
+    glGenVertexArrays(1, &image_vao); 
     gen_framebuffers();
     image_vao = gen_image(glm::vec2(-1.0f, -1.0f), glm::vec2(2.0f, 2.0f), 0.0f, 0.0f, 1.0f, 1.0f);
 
@@ -337,9 +338,9 @@ void PlayMode::update(float elapsed) {
                 if (c) {
                     if (text_storage->object_text_map.count(c->name)) {
                         auto v = text_storage->object_text_map.at(c->name);
-                        text_display.text = {""};
-                        text_display.add_text(v[0]);
-                        text_display.activate();
+                        sign_display.text = {""};
+                        sign_display.add_text(v[0]);
+                        sign_display.activate();
                     }
                 }
             } else {
@@ -362,8 +363,8 @@ void PlayMode::update(float elapsed) {
         splineposition.set(1.0f, playerToWorld * glm::vec4(player.defaultCameraPosition, 1.0f));
         splinerotation.set(1.0f, glm::quat(
                 glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
-        text_display.deactivate();
-        text_display.remove_all_text();
+        sign_display.deactivate();
+        sign_display.remove_all_text();
     }
     
     //player walking:

@@ -5,8 +5,8 @@
 #include "TextDisplay.hpp"
 #include "ECS/Components/Draw.hpp"
 
-TextDisplay::TextDisplay(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size)
-        : font("UbuntuMono.png"), rows(rows), cols(cols), loc(loc), size(size), _is_activated(false) {
+TextDisplay::TextDisplay(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size, std::string fontpath)
+        : font(fontpath), rows(rows), cols(cols), loc(loc), size(size), _is_activated(false) {
     assert(rows > 0);
     assert(cols > 0);
 }
