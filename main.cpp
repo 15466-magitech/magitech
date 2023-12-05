@@ -153,6 +153,8 @@ int main(int argc, char **argv) {
                 if (Mode::current == pausemode){
 
                     SDL_SetRelativeMouseMode(SDL_FALSE);
+
+                    
                     
 
 
@@ -163,12 +165,12 @@ int main(int argc, char **argv) {
                             Mode::set_current(playmode);
                             Mode::set_state(PLAYING);
                         } 
-                        if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q){
+                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
                             Mode::set_current(nullptr);
                         }
                         break;
                     case PAUSE:
-                        if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q){
+                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
                             Mode::set_current(nullptr);
                         }
                         if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_ESCAPE){
@@ -178,7 +180,7 @@ int main(int argc, char **argv) {
                         break;
 
                     case END:
-                        if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q){
+                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
                             Mode::set_current(nullptr);
                         }
                         break;
