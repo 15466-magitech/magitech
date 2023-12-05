@@ -4,6 +4,8 @@
 //The 'PlayMode' mode plays the game:
 #include "PlayMode.hpp"
 
+#include "PauseMode.hpp"
+
 //For asset loading:
 #include "Load.hpp"
 
@@ -111,9 +113,13 @@ int main(int argc, char **argv) {
     
     //------------ load assets --------------
     call_load_functions();
+
+    auto playmode = std::make_shared<PlayMode>(window);
+    auto pausemode = std::make_shared<PauseMode>(window);
     
     //------------ create game mode + make current --------------
-    Mode::set_current(std::make_shared<PlayMode>(window));
+    Mode::set_current(pausemode);
+    Mode::set_state(START);
     
     //------------ main loop ------------
     
@@ -144,27 +150,81 @@ int main(int argc, char **argv) {
                 if (evt.type == SDL_WINDOWEVENT && evt.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                     on_resize();
                 }
-                //handle input:
-                if (Mode::current && Mode::current->handle_event(evt, window_size)) {
-                    // mode handled it; great
-                } else if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)) {
-                    Mode::set_current(nullptr);
-                    break;
-                } else if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_p) {
-                    // --- screenshot key ---
-                    std::string filename = "screenshot.png";
-                    std::cout << "Saving screenshot to '" << filename << "'." << std::endl;
-                    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-                    glReadBuffer(GL_FRONT);
-                    int w, h;
-                    SDL_GL_GetDrawableSize(window, &w, &h);
-                    std::vector<glm::u8vec4> data(w * h);
-                    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
-                    for (auto &px: data) {
-                        px.a = 0xff;
+                if (Mode::current == pausemode){
+
+                    SDL_SetRelativeMouseMode(SDL_FALSE);
+
+                    
+                    
+
+
+                    switch (Mode::current->game_state)
+                    {
+                    case START:
+                        if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_s){
+                            Mode::set_current(playmode);
+                            Mode::set_state(PLAYING);
+                        } 
+                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
+                            Mode::set_current(nullptr);
+                        }
+                        break;
+                    case PAUSE:
+                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
+                            Mode::set_current(nullptr);
+                        }
+                        if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_ESCAPE){
+                            Mode::set_current(playmode);
+                            Mode::set_state(PLAYING);
+                        }
+                        break;
+
+                    case END:
+                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
+                            Mode::set_current(nullptr);
+                        }
+                        break;
+                    
+                    default:
+                        std::runtime_error("Wrong game state");
+                        break;
                     }
-                    save_png(filename, glm::uvec2(w, h), data.data(), LowerLeftOrigin);
+                } else if (Mode::current == playmode){
+                    //should only be END
+                    if(Mode::game_state != PLAYING){
+                        assert(Mode::game_state == END);
+                        Mode::set_current(pausemode);
+                        Mode::set_state(END);
+                        continue;
+                    }
+
+
+                    if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q){
+                            Mode::set_state(PAUSE);
+                            Mode::set_current(pausemode);
+                            //game state setted inside playmode
+                    }else{
+                        Mode::current->handle_event(evt, window_size);
+                    }
                 }
+
+                //there are some bugs with typing p in terminal and taking screenshot?
+
+                // if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_p) {
+                //     // --- screenshot key ---
+                //     std::string filename = "screenshot.png";
+                //     std::cout << "Saving screenshot to '" << filename << "'." << std::endl;
+                //     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                //     glReadBuffer(GL_FRONT);
+                //     int w, h;
+                //     SDL_GL_GetDrawableSize(window, &w, &h);
+                //     std::vector<glm::u8vec4> data(w * h);
+                //     glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+                //     for (auto &px: data) {
+                //         px.a = 0xff;
+                //     }
+                //     save_png(filename, glm::uvec2(w, h), data.data(), LowerLeftOrigin);
+                // }
             }
             if (!Mode::current) break;
         }

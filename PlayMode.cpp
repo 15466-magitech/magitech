@@ -1623,8 +1623,6 @@ void PlayMode::initialize_player(){
                     if(text_display.is_activated()){
                         text_display.deactivate();
                         text_display.remove_all_text();
-                    }else{
-                        SDL_SetRelativeMouseMode(SDL_FALSE);
                     }
                     esc.downs += 1;
                     esc.pressed = true;
@@ -1711,6 +1709,14 @@ void PlayMode::initialize_player(){
                                         scene->collider_name_map.erase(c->name);
                                         text_display.add_text(std::vector<std::string>{"You unlocked the door!"});
                                         text_display.activate();
+
+                                        {
+                                            //debug lines for pause menu
+                                            Mode::set_state(END);
+                                            text_display.deactivate();
+                                        }
+
+
                                         break;
                                     }
                                 }
