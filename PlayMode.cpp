@@ -1712,8 +1712,8 @@ void PlayMode::initialize_player(){
 
                                         {
                                             //debug lines for pause menu
-                                            Mode::set_state(END);
-                                            text_display.deactivate();
+                                            // Mode::set_state(END);
+                                            // text_display.deactivate();
                                         }
 
 
