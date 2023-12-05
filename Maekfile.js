@@ -135,6 +135,7 @@ if (maek.OS === 'windows') {
 const game_names = [
     maek.CPP('WalkMesh.cpp'),
     maek.CPP('PlayMode.cpp'),
+    maek.CPP('PauseMode.cpp'),
     maek.CPP('main.cpp'),
     maek.CPP('ComicBookProgram.cpp'),
     maek.CPP('ShadowProgram.cpp'),
