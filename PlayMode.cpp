@@ -558,7 +558,7 @@ void PlayMode::resize_depth_tex() {
     glm::uvec2 window_size = glm::uvec2(lastWidth, lastHeight);
     
     glBindTexture(GL_TEXTURE_2D, depth_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x, window_size.y, 0, GL_DEPTH_COMPONENT,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, (GLsizei)window_size.x, (GLsizei)window_size.y, 0, GL_DEPTH_COMPONENT,
                  GL_UNSIGNED_INT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -567,7 +567,7 @@ void PlayMode::resize_depth_tex() {
     glBindTexture(GL_TEXTURE_2D, 0);
     
     glBindTexture(GL_TEXTURE_2D, shadow_depth_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, window_size.x * 4.0, window_size.y * 4.0, 0, GL_DEPTH_COMPONENT,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, (GLsizei)(window_size.x * 4.0), (GLsizei)(window_size.y * 4.0), 0, GL_DEPTH_COMPONENT,
                  GL_UNSIGNED_INT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -930,7 +930,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
     glBindTexture(GL_TEXTURE_2D, shadow_depth_tex);
     glActiveTexture(GL_TEXTURE0);
 
-    glViewport(0, 0, drawable_size.x * 4.0, drawable_size.y * 4.0);
+    glViewport(0, 0, (GLsizei)(drawable_size.x * 4.0), (GLsizei)(drawable_size.y * 4.0));
     glBindFramebuffer(GL_FRAMEBUFFER, shadow_depth_fb);
     glClear(GL_DEPTH_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
