@@ -55,6 +55,28 @@ Load< Sound::Sample > fire_sample(LoadTagDefault, []() -> Sound::Sample const * 
         return new Sound::Sample(data_path("fire.opus"));
 });
 
+Load< Sound::Sample > door_open_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("door_open.opus"));
+});
+
+Load< Sound::Sample > cast_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("cast.wav"));
+});
+
+Load< Sound::Sample > bounce_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("boing.opus"));
+});
+
+Load< Sound::Sample > walk_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("concrete-footsteps.opus"));
+});
+
+Load< Sound::Sample > walk_15x_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("concrete-footsteps_speed_up.opus"));
+});
+
+
+
 Load<MeshBuffer> artworld_meshes(LoadTagDefault, []() -> MeshBuffer const * {
     MeshBuffer const *ret = new MeshBuffer(data_path("artworld.pnct"));
     artworld_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
@@ -275,6 +297,14 @@ PlayMode::PlayMode(SDL_Window *window)
     // this activates the player component stuff
     terminal.activate();
     terminal.deactivate();
+
+    walk = Sound::loop(*walk_sample);
+    walk_15x = Sound::loop(*walk_15x_sample);
+
+    walk->set_volume(0.0f);
+    walk_15x->set_volume(0.0f);
+
+
 }
 
 PlayMode::~PlayMode() = default;
@@ -393,9 +423,26 @@ void PlayMode::update(float elapsed) {
             if (!down.pressed && up.pressed) move.y = 1.0f;
 
             //make it so that moving diagonally doesn't go faster:
-            if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
+            if (move != glm::vec2(0.0f))
+            {
+                move = glm::normalize(move) * PlayerSpeed * elapsed;
+                if(run.pressed){
+                    walk->set_volume(0.0f);
+                    walk_15x->set_volume(1.0f);
+                }else{
+                    walk->set_volume(1.0f);
+                    walk_15x->set_volume(0.0f);
+                }
 
-            if (run.pressed) move *= 2;
+            }else{
+                walk->set_volume(0.0f);
+                walk_15x->set_volume(0.0f);
+            }
+
+            if (run.pressed)
+            {
+                move *= 2;
+            } 
 
             //get move in world coordinate system:
             glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
@@ -510,6 +557,7 @@ void PlayMode::update(float elapsed) {
                 if (player.bounce_stage == 1){
                     player.interpolation_time = 0.0;
                     player.bounce_stage = 2;
+                    Sound::play(*bounce_sample);
                     set_bouncing_spline(player.bounce_destination,player.bounce_midpoint);
                     player.bounce_destination = glm::vec3{0.0f};
                     player.bounce_midpoint = glm::vec3{0.0f};
@@ -1052,6 +1100,7 @@ void PlayMode::update_wireframe(const std::shared_ptr<Scene::Collider> &c) {
 
 
     text_display.add_text(std::vector<std::string>{"You use the magic paintbrush's power on the object"});
+    Sound::play(*cast_sample);
     
     if (is_current_wireframe) {
         scene->current_wireframe_objects_map.erase(c->name);
@@ -1710,6 +1759,7 @@ void PlayMode::initialize_player(){
                                         text_display.add_text(std::vector<std::string>{"You unlocked the door!"});
                                         text_display.activate();
 
+                                        Sound::play(*door_open_sample);
                                         {
                                             //debug lines for pause menu
                                             // Mode::set_state(END);
@@ -1747,6 +1797,7 @@ void PlayMode::initialize_player(){
 
                                 get_off_walkmesh();
                                 set_bouncing_spline(location);
+                                Sound::play(*bounce_sample);
                                 player.bounce_stage = 1;
                                 player.bounce_destination = scene->bread_bouncelocation_map[c].second;
                                 player.bounce_midpoint = scene->bread_bouncelocation_map[c].first;

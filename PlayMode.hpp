@@ -71,6 +71,7 @@ struct PlayMode : Mode {
     std::shared_ptr<Scene> scene;
     std::map<scene_type,std::shared_ptr<Scene>> scene_map;
     std::shared_ptr<Sound::PlayingSample> bgm;
+    std::shared_ptr<Sound::PlayingSample> walk, walk_15x;
     
     //player info:
     struct Player : Entity {

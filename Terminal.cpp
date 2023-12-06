@@ -9,6 +9,10 @@
 #include "ECS/Components/TerminalDeactivateHandler.hpp"
 
 
+Load <Sound::Sample> ability_unlock_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("ability.opus"));
+});
+
 Load< Sound::Sample > kb_sample(LoadTagDefault, []() -> Sound::Sample const * {
         return new Sound::Sample(data_path("keyboard.opus"));
 });
@@ -41,6 +45,7 @@ bool Terminal::handle_key(SDL_Keycode key) {
         deactivate();
         return true;
     } else if (key == SDLK_BACKSPACE) {
+        Sound::play(*kb_sample);
         if (!text_display.text.empty() && !text_display.text.back().empty()) {
             text_display.text.back().pop_back();
         }
@@ -48,6 +53,7 @@ bool Terminal::handle_key(SDL_Keycode key) {
     } else if (key == SDLK_RETURN) {
         if (!text_display.text.empty()) {
             if (text_display.text.back() == "open sesame") {
+                Sound::play(*ability_unlock_sample);
                 text_display.text.emplace_back("activating unlock magic...");
                 text_display.add_text(std::vector<std::string>{"You can now use SPACE to unlock doors"});
                 if (text_display.text.size() > text_display.rows) {
@@ -55,6 +61,7 @@ bool Terminal::handle_key(SDL_Keycode key) {
                 }
                 TerminalCommandHandler::handle_all(Command::OpenSesame);
             } else if (text_display.text.back() == "mirage") {
+                Sound::play(*ability_unlock_sample);
                 text_display.text.emplace_back("activating illusion magic...");
                 text_display.text.emplace_back("You can use SPACE to cast wireframe magic");
                 if (text_display.text.size() > text_display.rows) {
@@ -62,6 +69,7 @@ bool Terminal::handle_key(SDL_Keycode key) {
                 }
                 TerminalCommandHandler::handle_all(Command::Mirage);
             } else if (text_display.text.back() == "cook") {
+                Sound::play(*ability_unlock_sample);
                 text_display.text.emplace_back("making a dish...");
                 if (text_display.text.size() > text_display.rows) {
                     text_display.text.erase(text_display.text.begin());
@@ -81,6 +89,7 @@ bool Terminal::handle_key(SDL_Keycode key) {
         }
         return true;
     } else if (key == SDLK_SPACE) {
+        Sound::play(*kb_sample);
         char c = ' ';
         if (!text_display.text.empty() && text_display.text.back().size() < text_display.cols) {
             text_display.text.back().push_back(c);
