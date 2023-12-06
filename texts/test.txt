@@ -5,7 +5,7 @@ The sign above the town's entrance seems like it's in bad shape,
 <:>text_spaceship_m
 
 The door is locked, please try typing open sesame in the terminal.
-You can press E to activte the terminal.
+You can press E to activate the terminal.
 <:>text_big_bucket
 
 The artist made this world, then left.
