@@ -2,6 +2,9 @@
 
 #include <SDL.h>
 
+#include "Sound.hpp"
+#include "Load.hpp"
+
 #include "TextDisplay.hpp"
 #include "ECS/Component.hpp"
 #include "ECS/Components/TerminalCommandHandler.hpp"

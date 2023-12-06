@@ -8,6 +8,12 @@
 #include "ECS/Components/EventHandler.hpp"
 #include "ECS/Components/TerminalDeactivateHandler.hpp"
 
+
+Load< Sound::Sample > kb_sample(LoadTagDefault, []() -> Sound::Sample const * {
+        return new Sound::Sample(data_path("keyboard.opus"));
+});
+
+
 Terminal::Terminal(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size)
         : text_display(rows, cols, loc, size) {}
 
@@ -81,6 +87,7 @@ bool Terminal::handle_key(SDL_Keycode key) {
         }
         return true;
     } else if (keyname.size() == 1 && std::isgraph(keyname[0], locale)) {
+        Sound::play(*kb_sample);
         char c = std::tolower(keyname[0], locale);
         if (!text_display.text.empty() && text_display.text.back().size() < text_display.cols) {
             text_display.text.back().push_back(c);
