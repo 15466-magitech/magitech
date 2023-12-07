@@ -107,18 +107,18 @@ if (maek.OS === "windows") {
 // from: file to copy from
 // to: file to copy to
 let copies = [
-    maek.COPY(`${NEST_LIBS}/SDL2/dist/README-SDL.txt`, `dist/README-SDL.txt`),
-    maek.COPY(`${NEST_LIBS}/libpng/dist/README-libpng.txt`, `dist/README-libpng.txt`),
-    maek.COPY(`${NEST_LIBS}/glm/dist/README-glm.txt`, `dist/README-glm.txt`),
-    maek.COPY(`${NEST_LIBS}/libopus/dist/README-libopus.txt`, `dist/README-libopus.txt`),
-    maek.COPY(`${NEST_LIBS}/opusfile/dist/README-opusfile.txt`, `dist/README-opusfile.txt`),
-    maek.COPY(`${NEST_LIBS}/libogg/dist/README-libogg.txt`, `dist/README-libogg.txt`),
-    maek.COPY(`${NEST_LIBS}/harfbuzz/dist/README-harfbuzz.txt`, `dist/README-harfbuzz.txt`),
-    maek.COPY(`${NEST_LIBS}/freetype/dist/README-freetype.txt`, `dist/README-freetype.txt`),
-    maek.COPY(`fonts/UFL.txt`, `dist/UFL.txt`),
-    maek.COPY(`fonts/README.md`, `dist/README-fonts.txt`),
-    maek.COPY(`fonts/UbuntuMono.png`, `dist/UbuntuMono.png`),
-    maek.COPY(`texts/text_binary`, `dist/text_binary`)
+    maek.COPY(`${NEST_LIBS}/SDL2/dist/README-SDL.txt`, `dist/resources/README-SDL.txt`),
+    maek.COPY(`${NEST_LIBS}/libpng/dist/README-libpng.txt`, `dist/resources/README-libpng.txt`),
+    maek.COPY(`${NEST_LIBS}/glm/dist/README-glm.txt`, `dist/resources/README-glm.txt`),
+    maek.COPY(`${NEST_LIBS}/libopus/dist/README-libopus.txt`, `dist/resources/README-libopus.txt`),
+    maek.COPY(`${NEST_LIBS}/opusfile/dist/README-opusfile.txt`, `dist/resources/README-opusfile.txt`),
+    maek.COPY(`${NEST_LIBS}/libogg/dist/README-libogg.txt`, `dist/resources/README-libogg.txt`),
+    maek.COPY(`${NEST_LIBS}/harfbuzz/dist/README-harfbuzz.txt`, `dist/resources/README-harfbuzz.txt`),
+    maek.COPY(`${NEST_LIBS}/freetype/dist/README-freetype.txt`, `dist/resources/README-freetype.txt`),
+    maek.COPY(`fonts/UFL.txt`, `dist/resources/UFL.txt`),
+    maek.COPY(`fonts/README.md`, `dist/resources/README-fonts.txt`),
+    maek.COPY(`fonts/UbuntuMono.png`, `dist/resources/UbuntuMono.png`),
+    maek.COPY(`texts/text_binary`, `dist/resources/text_binary`)
 ];
 if (maek.OS === 'windows') {
     copies.push(maek.COPY(`${NEST_LIBS}/SDL2/dist/SDL2.dll`, `dist/SDL2.dll`));
