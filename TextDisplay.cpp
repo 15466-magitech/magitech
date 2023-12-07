@@ -54,11 +54,19 @@ void TextDisplay::add_text(const std::vector<std::string> &strs) {
             auto shortened_string = pos != std::string::npos ?
                                     std::string(v_copy.begin(), v_copy.begin() + pos) :
                                     std::string(v_copy.begin(), v_copy.end());
+            if(shortened_string[0] == ' ' && shortened_string.size() >=2){
+                shortened_string = std::string(shortened_string.begin() + 1, shortened_string.end());
+            }
+            
             fitted_strs.push_back(shortened_string);
             
             v_copy = pos != std::string::npos ?
                      std::string(v_copy.begin() + pos, v_copy.end()) :
                      std::string(v_copy.end(), v_copy.end());
+        }
+
+        if(v_copy[0] == ' ' && v_copy.size()>=2){
+                v_copy = std::string(v_copy.begin() + 1, v_copy.end());
         }
         
         fitted_strs.push_back(v_copy);
