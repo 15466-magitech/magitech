@@ -232,7 +232,7 @@ Load<WalkMeshes> foodworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
 });
 
 PlayMode::PlayMode(SDL_Window *window)
-        : sign_display(5, 40, glm::vec2(-0.3f,-0.25f), glm::vec2(0.6f,0.4f),"UbuntuMono_transparent_white.png"),
+        : sign_display(8, 40, glm::vec2(-0.3f,-0.25f), glm::vec2(0.6f,0.4f),"UbuntuMono_transparent_white.png"),
           text_display(5, 60, glm::vec2(-0.40f, -0.45f), glm::vec2(0.8f, 0.2f)),
           terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f),"UbuntuMono_terminal.png") {
     
@@ -446,20 +446,20 @@ void PlayMode::update(float elapsed) {
             if (move != glm::vec2(0.0f))
             {
                 move = glm::normalize(move) * PlayerSpeed * elapsed;
-                if(run.pressed){
+                if (lrun.pressed || rrun.pressed) {
                     walk->set_volume(0.0f);
                     walk_15x->set_volume(1.0f);
-                }else{
+                } else {
                     walk->set_volume(1.0f);
                     walk_15x->set_volume(0.0f);
                 }
 
-            }else{
+            } else {
                 walk->set_volume(0.0f);
                 walk_15x->set_volume(0.0f);
             }
 
-            if (run.pressed)
+            if (lrun.pressed || rrun.pressed)
             {
                 move *= 2;
             } 
@@ -609,7 +609,8 @@ void PlayMode::update(float elapsed) {
     right.downs = 0;
     up.downs = 0;
     down.downs = 0;
-    run.downs = 0;
+	lrun.downs = 0;
+	rrun.downs = 0;
 }
 
 int lastWidth = -1;
@@ -1736,10 +1737,14 @@ void PlayMode::initialize_player(){
                     down.pressed = true;
                     return true;
                 } else if (evt.key.keysym.sym == SDLK_LSHIFT) {
-                    run.downs += 1;
-                    run.pressed = true;
+                    lrun.downs += 1;
+                    lrun.pressed = true;
                     return true;
-                } else if (evt.key.keysym.sym == SDLK_e) {
+                } else if (evt.key.keysym.sym == SDLK_RSHIFT) {
+					rrun.downs += 1;
+					rrun.pressed = true;
+					return true;
+				} else if (evt.key.keysym.sym == SDLK_e) {
                     std::shared_ptr<Scene::Collider> c = nullptr;
                     float distance = 0.0;
                     std::tie(c, distance) = mouse_collider_check("col_terminal", true);
@@ -1885,9 +1890,12 @@ void PlayMode::initialize_player(){
                     down.pressed = false;
                     return true;
                 } else if (evt.key.keysym.sym == SDLK_LSHIFT) {
-                    run.pressed = false;
+                    lrun.pressed = false;
                     return true;
-                } else if (evt.key.keysym.sym == SDLK_r) {
+                } else if (evt.key.keysym.sym == SDLK_RSHIFT) {
+					rrun.pressed = false;
+					return true;
+				} else if (evt.key.keysym.sym == SDLK_r) {
                     read.pressed = false;
                     return true;
                 } else if (evt.key.keysym.sym == SDLK_ESCAPE) {

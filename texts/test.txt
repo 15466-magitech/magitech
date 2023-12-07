@@ -1,29 +1,12 @@
-<:>text_sign_town_entrance_m
-
-The sign above the town's entrance seems like it's in bad shape,
- and it may be missing some letters. It currently looks like it reads Pain Point.
 <:>text_sign_spaceship_m
 
-The door is locked, please try typing open sesame in the terminal.
-You can press E to activate the terminal.
-<:>text_big_bucket
+If you're ever locked in, remember to use your door unlocking spell!
+If you've forgotten how to use it, type 'open sesame' into the terminal.
+Aim your crosshairs at any terminal and press E to activate it.
+Press ESC to zoom out.
+<:>text_sign_town_entrance_m
 
-The artist made this world, then left.
-<:>text_easel
-
-This painting is missing its purple tones.
-<:>text_bridge
-
-The water here doesn't look real - it's an illusion. An illusion of water...
-<:>text_white_house
-
-The artist made the bridge a long time ago. We don't know why that sign's there, but maybe it has to do with the paintbrush.
-<:>text_platform
-
-You won!
-<:>text_small_bucket
-
-There's something up there...
-<:>text_corner
-
-(You can tell there was writing on this sign, but it's unintelligible now.)
+Welcome!
+If you look up, you'll see the town sign, but it looks to be in bad shape.
+Maybe it's missing some letters?
+It currently seems to say Pain Point.
