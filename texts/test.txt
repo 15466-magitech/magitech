@@ -38,3 +38,12 @@ I heard he really loved a good *illusion* ...
 There's a bridge here, and the town calls this a river, but there's no water.
 So someone framed it and calls it modern art, probably.
 Is this some kind of mirage? Did the artist intend this as a message?
+<:>text_sign_cook_instructions_m
+
+Welcome to the Cauldron! Our motto is "Great cooking can take one to new heights."
+Our specialty recipe is a garlic bread with a special hint of peachy perfection!
+To bring a recipe to life, fill in which ingredients you want to use, and then use the 'cook' command in the terminal!
+<:>text_col_npc_chef_m
+
+Hi there! I need some ingredients up there on the balcony, but I'm afraid the door up there is stuck and can't open...
+But you're a wizard, right? Would you be able to get up there and help me with the door?
