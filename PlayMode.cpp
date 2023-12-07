@@ -380,12 +380,26 @@ void PlayMode::update(float elapsed) {
                 float distance = 0.0;
                 std::tie(c, distance) = mouse_text_check("text_", true);
                 if (c) {
-                    if (text_storage->object_text_map.count(c->name)) {
-                        auto v = text_storage->object_text_map.at(c->name);
-                        sign_display.text = {""};
-                        sign_display.add_text(v[0]);
-                        sign_display.activate();
+                    if (c->name.find("text_sign_")!=std::string::npos){
+                        if (text_storage->object_text_map.count(c->name)) {
+                            auto v = text_storage->object_text_map.at(c->name);
+                            sign_display.text = {""};
+                            sign_display.add_text(v[0]);
+                            sign_display.activate();
+                        }
                     }
+                    else if(c->name.find("text_npc_")!=std::string::npos){
+                        if (text_storage->object_text_map.count(c->name)) {
+                            auto v = text_storage->object_text_map.at(c->name);
+                            text_display.text = {""};
+                            for(auto tmp : v){
+                                text_display.add_text(tmp);
+                            }
+                            text_display.activate();
+                        }
+                    }
+
+
                 }
             } else {
                 animated = NO;
@@ -409,6 +423,8 @@ void PlayMode::update(float elapsed) {
                 glm::mat3(playerToWorld) * glm::mat3_cast(glm::quat(player.defaultCameraRotation))));
         sign_display.deactivate();
         sign_display.remove_all_text();
+        text_display.deactivate();
+        text_display.remove_all_text();
     }
     
     //player walking:
