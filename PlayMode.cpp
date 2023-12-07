@@ -328,8 +328,12 @@ void PlayMode::update(float elapsed) {
                 continue;
             }
             auto transform = nameToTransform[name];
-            auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+            // Is this correct???
+            auto there_test = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+            auto tmp = transform->make_local_to_world();
+            auto there = glm::vec3{tmp[3][0],tmp[3][1],tmp[3][2]};
             std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
+            std::cout << "there_t " << there_test.x << " " << there_test.y << " " << there_test.z << std::endl;
             float newdistance = glm::distance(here, there);
             std::cout << "distance: " << newdistance << " name: " << name << std::endl;
             if (newdistance < distance) {
@@ -1688,6 +1692,8 @@ void PlayMode::initialize_player(){
                     if(text_display.is_activated()){
                         text_display.deactivate();
                         text_display.remove_all_text();
+                    } else{
+                        SDL_SetRelativeMouseMode(SDL_FALSE);
                     }
                     esc.downs += 1;
                     esc.pressed = true;
@@ -1949,7 +1955,10 @@ std::pair<std::string,glm::vec3>  PlayMode::find_closest_sign(){
                 continue;
             }
             auto transform = nameToTransform[name];
-            auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+            // Is this correct???
+            //auto there = transform->make_local_to_world() * glm::vec4(transform->position, 1.0);
+            auto tmp = transform->make_local_to_world();
+            auto there = glm::vec3{tmp[3][0],tmp[3][1],tmp[3][2]};
             //std::cout << "there " << there.x << " " << there.y << " " << there.z << std::endl;
             float newdistance = glm::distance(here, there);
             //std::cout << "distance: " << newdistance << " name: " << name << std::endl;
@@ -1959,14 +1968,21 @@ std::pair<std::string,glm::vec3>  PlayMode::find_closest_sign(){
             }
         }
         if (!selected.empty()) {
-            //std::cout << "selected: " << selected << std::endl;
-            assert(selected.back() == 'm');
-            std::string selectedCamera = textBearerCams[selected];
-            auto t = nameToTransform[selected];
-            auto selectedToWorld = t->make_local_to_world();
-            auto world_coord = selectedToWorld * glm::vec4(t->position,1.0);
-            //auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
-            return std::make_pair(selected,world_coord);
+            if (scene->collider_name_map.count(selected) == 0){
+                //std::cout << "selected: " << selected << std::endl;
+                assert(selected.back() == 'm');
+                std::string selectedCamera = textBearerCams[selected];
+                auto t = nameToTransform[selected];
+                auto selectedToWorld = t->make_local_to_world();
+                auto world_coord = glm::vec3{selectedToWorld[3][0],selectedToWorld[3][1],selectedToWorld[3][2]};
+                //auto endposition = selectedToWorld * glm::vec4(destCamera->transform->position, 1.0);
+                return std::make_pair(selected,world_coord);
+            }else{
+                auto c = scene->collider_name_map[selected];
+                auto p = (c->min + c->max) / 2.0f;
+                p.z = c->max.z;
+                return std::make_pair(selected,p);
+            }
         } else {
             //std::cout << "No readable sign in range" << std::endl;
             return std::make_pair(selected,glm::vec3{0.0f});
