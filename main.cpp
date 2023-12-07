@@ -174,6 +174,9 @@ int main(int argc, char **argv) {
                     break;
                 
                 case END:
+                    if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q){
+                        Mode::set_current(nullptr);
+                    }
                     break;
                 
                 default:
