@@ -1826,10 +1826,11 @@ void PlayMode::initialize_player(){
                                         text_display.activate();
 
                                         Sound::play(*door_open_sample);
+                                        if(c->name == "col_unlock_breaddoor")
                                         {
-                                            //debug lines for pause menu
-                                            // Mode::set_state(END);
-                                            // text_display.deactivate();
+                                            //Show win screen if this door is unlocked
+                                            Mode::set_state(END);
+                                            text_display.deactivate();
                                         }
 
 
