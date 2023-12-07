@@ -1,8 +1,8 @@
-<:>text_town_entrance_m
+<:>text_sign_town_entrance_m
 
 The sign above the town's entrance seems like it's in bad shape,
  and it may be missing some letters. It currently looks like it reads Pain Point.
-<:>text_spaceship_m
+<:>text_sign_spaceship_m
 
 The door is locked, please try typing open sesame in the terminal.
 You can press E to activate the terminal.

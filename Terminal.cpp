@@ -18,8 +18,8 @@ Load< Sound::Sample > kb_sample(LoadTagDefault, []() -> Sound::Sample const * {
 });
 
 
-Terminal::Terminal(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size)
-        : text_display(rows, cols, loc, size) {}
+Terminal::Terminal(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size,std::string filepath)
+        : text_display(rows, cols, loc, size,filepath) {}
 
 void Terminal::activate() {
     add_component<EventHandler>([this](const SDL_Event &evt, const glm::uvec2 &window_size) {

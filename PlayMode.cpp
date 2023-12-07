@@ -234,7 +234,7 @@ Load<WalkMeshes> foodworld_walkmeshes(LoadTagDefault, []() -> WalkMeshes const *
 PlayMode::PlayMode(SDL_Window *window)
         : sign_display(5, 40, glm::vec2(-0.3f,-0.25f), glm::vec2(0.6f,0.4f),"UbuntuMono_transparent_white.png"),
           text_display(5, 60, glm::vec2(-0.40f, -0.45f), glm::vec2(0.8f, 0.2f)),
-          terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f)) {
+          terminal(10, 30, glm::vec2(0.05f, 0.05f), glm::vec2(0.4f, 0.4f),"UbuntuMono_terminal.png") {
     
     this->window = window;
     glGenVertexArrays(1, &image_vao); 

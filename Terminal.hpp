@@ -21,7 +21,7 @@ struct Terminal : Entity {
      * with the specified display size (as fraction of [-1, 1] x [-1, 1]).
      * Starts out unactivated
      */
-    Terminal(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size);
+    Terminal(size_t rows, size_t cols, glm::vec2 loc, glm::vec2 size, std::string filepath = "UbuntuMono.png");
     
     /*
      * Activate the terminal. This adds the EventHandler component and activates the text display.
