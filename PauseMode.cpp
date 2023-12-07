@@ -87,7 +87,7 @@ void PauseMode::draw(glm::uvec2 const &drawable_size) {
                             "Q : press Q to exit the game",
                             "",
                             "",
-                            "Created by Matei Budiu, Nellie Tonev, Russel Emerine, Michael Stroucken and Yuan Meng",
+                            "Created by Matei Budiu, Nellie Tonev, Russell Emerine, Michael Stroucken and Yuan Meng",
                             "",
                             "Thank you!"
                         
