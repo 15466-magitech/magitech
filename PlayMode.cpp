@@ -1711,11 +1711,10 @@ void PlayMode::initialize_player(){
         player.add_component<EventHandler>([this](SDL_Event const &evt, glm::uvec2 const &window_size) {
             if (evt.type == SDL_KEYDOWN) {
                 if (evt.key.keysym.sym == SDLK_ESCAPE) {
-                    if(text_display.is_activated()){
+                    // no longer disables relative mouse, that is handled in main
+                    if (text_display.is_activated()) {
                         text_display.deactivate();
                         text_display.remove_all_text();
-                    } else{
-                        SDL_SetRelativeMouseMode(SDL_FALSE);
                     }
                     esc.downs += 1;
                     esc.pressed = true;

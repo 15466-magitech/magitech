@@ -14,13 +14,8 @@
 #include <deque>
 #include <chrono>
 
-
-
-
-
-
 struct PauseMode : Mode {
-    PauseMode(SDL_Window* window);
+    explicit PauseMode(SDL_Window* window);
     
     ~PauseMode() override;
     
@@ -34,9 +29,7 @@ struct PauseMode : Mode {
     void draw(glm::uvec2 const &drawable_size) override;
     
     //----- game state -----
-    TextDisplay sign_display;
     TextDisplay text_display;
-    Terminal terminal;
     
     //input tracking:
     struct Button {
@@ -45,13 +38,4 @@ struct PauseMode : Mode {
     } left, right, down, up, esc, read, run;
 
     SDL_Window* window;
-    //local copy of the game scene (so code can change it during gameplay):
-
-
-
-    //Scene change
-    decltype(std::chrono::system_clock::now()) start_timepoint;
-    decltype(std::chrono::system_clock::now()) end_timepoint;
-    bool is_changing_scene = false;
-
 };

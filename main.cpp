@@ -17,6 +17,8 @@
 
 //for screenshots:
 #include "load_save_png.hpp"
+#include "ECS/Components/EventHandler.hpp"
+#include "ECS/Components/TerminalDeactivateHandler.hpp"
 
 //Includes for libSDL:
 #include <SDL.h>
@@ -113,7 +115,7 @@ int main(int argc, char **argv) {
     
     //------------ load assets --------------
     call_load_functions();
-
+    
     auto playmode = std::make_shared<PlayMode>(window);
     auto pausemode = std::make_shared<PauseMode>(window);
     
@@ -138,6 +140,51 @@ int main(int argc, char **argv) {
     };
     on_resize();
     
+    Entity quit_handler, pause_handler;
+    quit_handler.add_component<EventHandler>([](const SDL_Event &evt, const glm::uvec2 &window_size) {
+        if (evt.type == SDL_QUIT) {
+            Mode::set_current(nullptr);
+            return true;
+        } else if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_BACKQUOTE) {
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+            return true;
+        }
+        return false;
+    });
+    
+    pause_handler.add_component<EventHandler>([&](const SDL_Event &evt, const glm::uvec2 &window_size) {
+        if (Mode::current == playmode && !playmode->terminal.text_display.is_activated()
+            && evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_p) {
+            Mode::set_current(pausemode);
+            Mode::set_state(PAUSE);
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+            return true;
+        } else if (Mode::current == pausemode && evt.type == SDL_KEYDOWN) {
+            switch (Mode::current->game_state) {
+                case START:
+                case PAUSE:
+                    if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q) {
+                        Mode::set_current(nullptr);
+                    }
+                    if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_p) {
+                        Mode::set_current(playmode);
+                        Mode::set_state(PLAYING);
+                        SDL_SetRelativeMouseMode(SDL_TRUE);
+                    }
+                    break;
+                
+                case END:
+                    break;
+                
+                default:
+                    throw std::runtime_error("Wrong game state");
+                    break;
+            }
+            
+        }
+        return false;
+    });
+    
     //This will loop until the current mode is set to null:
     while (Mode::current) {
         //every pass through the game loop creates one frame of output
@@ -150,66 +197,24 @@ int main(int argc, char **argv) {
                 if (evt.type == SDL_WINDOWEVENT && evt.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                     on_resize();
                 }
-                if (Mode::current == pausemode){
-
-                    SDL_SetRelativeMouseMode(SDL_FALSE);
-
-                    
-                    
-
-
-                    switch (Mode::current->game_state)
-                    {
-                    case START:
-                        if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_s){
-                            Mode::set_current(playmode);
-                            Mode::set_state(PLAYING);
-                        } 
-                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
-                            Mode::set_current(nullptr);
-                        }
-                        break;
-                    case PAUSE:
-                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
-                            Mode::set_current(nullptr);
-                        }
-                        if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_ESCAPE){
-                            Mode::set_current(playmode);
-                            Mode::set_state(PLAYING);
-                        }
-                        break;
-
-                    case END:
-                        if (evt.type == SDL_QUIT || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)){
-                            Mode::set_current(nullptr);
-                        }
-                        break;
-                    
-                    default:
-                        std::runtime_error("Wrong game state");
-                        break;
-                    }
-                } else if (Mode::current == playmode){
+                
+                if (Mode::current == playmode) {
                     //should only be END
-                    if(Mode::game_state != PLAYING){
+                    if (Mode::game_state != PLAYING) {
                         assert(Mode::game_state == END);
                         Mode::set_current(pausemode);
                         Mode::set_state(END);
                         continue;
                     }
-
-
-                    if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_F1){
-                            Mode::set_state(PAUSE);
-                            Mode::set_current(pausemode);
-                            //game state setted inside playmode
-                    }else{
-                        Mode::current->handle_event(evt, window_size);
-                    }
                 }
-
+                
+                Mode::current->handle_event(evt, window_size);
+                if (!Mode::current) {
+                    break;
+                }
+                
                 //there are some bugs with typing p in terminal and taking screenshot?
-
+                
                 // if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_p) {
                 //     // --- screenshot key ---
                 //     std::string filename = "screenshot.png";
