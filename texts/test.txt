@@ -12,9 +12,10 @@ Maybe it's missing some letters?
 It currently seems to say Pain Point.
 <:>text_sign_instructions_m
 
-In a rush? Hold down SHIFT to run faster.
+In a rush? Hold down SHIFT to run.
 Need a break? Press P to pause.
 You can use any magic spell you've unlocked by pointing your crosshairs at an object and pressing SPACE.
+Press ESC to zoom out or close text windows.
 <:>text_col_npc_blue_m
 
 So you've heard about the artist that created our world?
@@ -22,21 +23,18 @@ Maybe with his powers, we could fix everything that's breaking around here.
 If I had to guess, the tool he used would be somewhere in this maze of a dump.
 <:>text_col_npc_green_m
 
-There was a powerful artist who designed this world and brought it to life...
-He left without a trace, but we think his magical tool of creation is still around here.
-I've never seen it myself, and I don't think any of us know how to use it.
+There was a powerful artist who designed this world and brought it to life... He left without a trace, but we think his magical tool of creation is still around here. Though I don't think any of us know how to use it.
 <:>text_col_npc_yellow_m
 
-Hey, by any chance do you know what happened to our fountain? It's all run dry.
-And the ground itself seems to be ripping over there... What do we do?!
+Hey, by any chance do you know what happened to our fountain? It's all run dry. And the ground itself seems to be ripping over there...
+What do we do?!
 <:>text_col_npc_red_m
 
-I've been a fan of the legendary artist for so long, but it seems like he's not here when we need him.
-But I'm sure he'll come back to help! He was always one for vanishing and reappearing tricks.
+I've been a fan of the legendary artist for so long, but it seems like he's not here when we need him. But I'm sure he'll come back to help! He was always one for vanishing and reappearing tricks.
 I heard he really loved a good *illusion* ...
 
-<:>text_bridgesign_m
+<:>text_sign_bridge_m
 
-There's a bridge here but it's not really going across any water, like you would expect.
-So someone framed it and calls it modern art probably. But what's going on?
-Is this some kind of mirage? Or just some trick? Did the artist intend this as a message?
+There's a bridge here, and the town calls this a river, but there's no water.
+So someone framed it and calls it modern art, probably.
+Is this some kind of mirage? Did the artist intend this as a message?

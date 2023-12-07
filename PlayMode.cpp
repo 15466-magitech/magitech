@@ -392,7 +392,7 @@ void PlayMode::update(float elapsed) {
                             sign_display.activate();
                         }
                     }
-                    else if(c->name.find("text_npc_")!=std::string::npos){
+                    else if(c->name.find("text_col_npc_")!=std::string::npos){
                         if (text_storage->object_text_map.count(c->name)) {
                             auto v = text_storage->object_text_map.at(c->name);
                             text_display.text = {""};
