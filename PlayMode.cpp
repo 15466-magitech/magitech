@@ -1454,22 +1454,44 @@ PlayMode::mouse_collider_check(const std::string &prefix, bool use_crosshair) {
     
     std::shared_ptr<Scene::Collider> intersected_collider = nullptr;
     
-    for (const auto &it: scene->collider_name_map) {
-        auto c = it.second;
-        if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
-            bool intersected;
-            float t;
-            std::tie(intersected, t) = c->ray_intersect(dir);
-            if (intersected) {
-                if (t < dir.t) {
-                    dir.t = t;
-                    intersected_collider = c;
+
+    if(prefix.find("terminal")!=std::string::npos){
+        for (const auto &it: scene->terminal_name_map) {
+            auto c = it.second;
+            if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
+                bool intersected;
+                float t;
+                std::tie(intersected, t) = c->ray_intersect(dir);
+                if (intersected) {
+                    if (t < dir.t) {
+                        dir.t = t;
+                        intersected_collider = c;
+                    }
                 }
             }
+            
+            
         }
-        
-        
+    }else{
+        for (const auto &it: scene->collider_name_map) {
+            auto c = it.second;
+            if (c->name.find(prefix) != std::string::npos || c->name.find("Paintbrush") != std::string::npos) {
+                bool intersected;
+                float t;
+                std::tie(intersected, t) = c->ray_intersect(dir);
+                if (intersected) {
+                    if (t < dir.t) {
+                        dir.t = t;
+                        intersected_collider = c;
+                    }
+                }
+            }
+            
+            
+        }
     }
+
+    
     
     float distance = glm::length(dir.d * dir.t);
     return std::make_pair(intersected_collider, distance);
@@ -1719,14 +1741,32 @@ void PlayMode::initialize_player(){
                     run.pressed = true;
                     return true;
                 } else if (evt.key.keysym.sym == SDLK_e) {
-                    terminal.activate();
-                    left.pressed = false;
-                    right.pressed = false;
-                    up.pressed = false;
-                    down.pressed = false;
-                    read.pressed = false;
-                    player.remove_component<EventHandler>();
-                    return true;
+                    std::shared_ptr<Scene::Collider> c = nullptr;
+                    float distance = 0.0;
+                    std::tie(c, distance) = mouse_collider_check("col_terminal", true);
+                    if(c){
+                        auto player_c = scene->collider_name_map["Player"];
+                        auto location_player = (player_c->min + player_c->max) / 2.0f;
+
+                        if(c->point_intersect(location_player)){
+                            terminal.activate();
+                            left.pressed = false;
+                            right.pressed = false;
+                            up.pressed = false;
+                            down.pressed = false;
+                            read.pressed = false;
+                            player.remove_component<EventHandler>();
+                            return true;
+                        }else{
+                            return true;
+                        }
+
+                    }else{
+                        return true;
+                    }
+
+
+
                 } else if (evt.key.keysym.sym == SDLK_r) {
                     read.downs += 1;
                     read.pressed = true;

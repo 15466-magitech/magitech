@@ -75,7 +75,7 @@ void PauseMode::draw(glm::uvec2 const &drawable_size) {
                 "",
                 "S : press S to start the game",
                 "Q in menu : press Q to exit the game",
-                "Q in game : press Q to pause the game"
+                "F1 in game : press F1 to pause the game"
                 //"` : press backquote to detach mouse"
             }
         );

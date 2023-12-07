@@ -226,7 +226,8 @@ struct Scene {
 	// std::list<std::shared_ptr<Collider>> ingredient_objects;
 	// std::map<std::string,std::shared_ptr<Collider>> ingredient_name_map;
 
-	
+	std::list<std::shared_ptr<Collider>> terminals;
+	std::map<std::string,std::shared_ptr<Collider>> terminal_name_map;
 
 
 	//The "draw" function provides a convenient way to pass all the things in a scene to OpenGL:

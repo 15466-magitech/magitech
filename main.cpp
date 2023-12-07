@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
                     }
 
 
-                    if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q){
+                    if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_F1){
                             Mode::set_state(PAUSE);
                             Mode::set_current(pausemode);
                             //game state setted inside playmode

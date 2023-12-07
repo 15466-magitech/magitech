@@ -729,8 +729,16 @@ void Scene::initialize_collider(const std::string &prefix, Load<MeshBuffer> mesh
             auto collider = std::make_shared<Scene::Collider>(name, min, max, min, max);
             auto d = drawble_name_map[name];
             collider->update_BBox(d->transform);
-            colliders.push_back(collider);
-            collider_name_map[name] = collider;
+
+			if(name.find("col_terminal") == std::string::npos){
+				colliders.push_back(collider);
+				collider_name_map[name] = collider;
+			}else{
+				terminals.push_back(collider);
+				terminal_name_map[name] = collider;
+			}
+
+
         }
     }
 }
