@@ -19,7 +19,7 @@ EXPORT_MESHES=export-meshes.py
 EXPORT_WALKMESHES=export-walkmeshes.py
 EXPORT_SCENE=export-scene.py
 
-DIST=../dist
+DIST=../dist/resources
 
 all : \
 	$(DIST)/artworld.pnct \
