@@ -1,4 +1,4 @@
-<:>text_yellow_house
+<:>text_town_entrance_m
 
 The sign above the town's entrance seems like it's in bad shape,
  and it may be missing some letters. It currently looks like it reads Pain Point.
