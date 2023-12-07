@@ -673,7 +673,7 @@ void Scene::initialize_wireframe_objects(const std::string &prefix) {
             } else {
                 d->wireframe_info.one_time_change = false;
             }
-            if (c->name.find("_on") != std::string::npos) {
+            if (c->name.find("_on_") != std::string::npos) {
                 d->wireframe_info.draw_frame = false;
             } else {
                 d->wireframe_info.draw_frame = true;
