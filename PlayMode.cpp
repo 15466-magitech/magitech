@@ -2041,7 +2041,15 @@ void PlayMode::cook() {
         std::cout << "collider has name " << name << "\n";
     }
     const std::unordered_map<std::string, bool> ingredients {
-            {"col_wire_off_pass_breadstick", true}
+            {"col_wire_off_pass_breadstick", true},
+			{"col_wire_off_pass_cherries", false},
+			{"col_wire_off_pass_peach", true},
+			{"col_wire_off_pass_onion", false},
+			{"col_wire_off_pass_tomato", false},
+			{"col_wire_off_pass_milk", false},
+			{"col_wire_off_pass_broccoli", false},
+			{"col_wire_off_pass_garlic", true},
+			{"col_wire_off_pass_cheese", false}
     };
     bool correct = true;
     for (auto &[name, required] : ingredients) {
