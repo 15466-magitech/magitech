@@ -62,8 +62,8 @@ bool Terminal::handle_key(SDL_Keycode key) {
                 TerminalCommandHandler::handle_all(Command::OpenSesame);
             } else if (text_display.text.back() == "illusion") {
                 Sound::play(*ability_unlock_sample);
-                text_display.text.emplace_back("Activating the paintbrush's magic abilities...");
-                text_display.text.emplace_back("You can now aim your crosshairs at wireframe objects and use SPACE to restore them!");
+				text_display.add_text(std::vector<std::string>{"Activating the paintbrush's magic abilities...",
+					"You can now aim your crosshairs at wireframe objects and use SPACE to restore them!"});
                 if (text_display.text.size() > text_display.rows) {
                     text_display.text.erase(text_display.text.begin());
                 }
